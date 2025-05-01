@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, User, Bell, X, DropletIcon } from 'lucide-react';
+import { Menu, User, Bell, X, DropletIcon, Brain } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -14,8 +14,8 @@ const Navbar: React.FC = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <Link to="/" className="flex items-center">
-              <DropletIcon className="h-8 w-8 text-red-600 mr-2" />
-              <span className="text-2xl font-bold text-red-600">BloodFlow</span>
+              <Brain className="h-8 w-8 text-purple-600 mr-2" />
+              <span className="text-2xl font-bold text-red-600">BloodMatch<span className="text-purple-600">AI</span></span>
             </Link>
           </div>
           

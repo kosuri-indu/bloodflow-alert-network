@@ -88,7 +88,7 @@ const AiMatchingCard: React.FC<AiMatchingCardProps> = ({ requests, isHospital = 
                       <p className="font-semibold">Rajesh Kumar</p>
                       <div className="flex items-center text-sm text-gray-600">
                         <UserCheck className="mr-1 h-4 w-4 text-blue-500" />
-                        <span>O+ • 3 previous donations</span>
+                        <span>O Rh+ (O+) • 3 previous donations</span>
                       </div>
                       <div className="flex items-center text-sm text-gray-600 mt-1">
                         <MapPin className="mr-1 h-4 w-4 text-blue-500" />
@@ -108,7 +108,7 @@ const AiMatchingCard: React.FC<AiMatchingCardProps> = ({ requests, isHospital = 
                       <p className="font-semibold">Priya Singh</p>
                       <div className="flex items-center text-sm text-gray-600">
                         <UserCheck className="mr-1 h-4 w-4 text-blue-500" />
-                        <span>O+ • 5 previous donations</span>
+                        <span>O Rh+ (O+) • 5 previous donations</span>
                       </div>
                       <div className="flex items-center text-sm text-gray-600 mt-1">
                         <MapPin className="mr-1 h-4 w-4 text-blue-500" />
@@ -128,7 +128,7 @@ const AiMatchingCard: React.FC<AiMatchingCardProps> = ({ requests, isHospital = 
                       <p className="font-semibold">Amit Sharma</p>
                       <div className="flex items-center text-sm text-gray-600">
                         <UserCheck className="mr-1 h-4 w-4 text-blue-500" />
-                        <span>O- • 1 previous donation</span>
+                        <span>O Rh- (O-) • 1 previous donation</span>
                       </div>
                       <div className="flex items-center text-sm text-gray-600 mt-1">
                         <MapPin className="mr-1 h-4 w-4 text-blue-500" />
@@ -150,7 +150,7 @@ const AiMatchingCard: React.FC<AiMatchingCardProps> = ({ requests, isHospital = 
                       </div>
                       <div className="flex items-center text-sm text-gray-600">
                         <UserCheck className="mr-1 h-4 w-4 text-green-500" />
-                        <span>AB+ • Appointment: Today, 4:00 PM</span>
+                        <span>AB Rh+ (AB+) • Appointment: Today, 4:00 PM</span>
                       </div>
                       <div className="flex items-center text-sm text-gray-600 mt-1">
                         <Clock className="mr-1 h-4 w-4 text-green-500" />
@@ -170,7 +170,7 @@ const AiMatchingCard: React.FC<AiMatchingCardProps> = ({ requests, isHospital = 
                       </div>
                       <div className="flex items-center text-sm text-gray-600">
                         <UserCheck className="mr-1 h-4 w-4 text-amber-500" />
-                        <span>O+ • Appointment: Today, 5:30 PM</span>
+                        <span>O Rh+ (O+) • Appointment: Today, 5:30 PM</span>
                       </div>
                       <div className="flex items-center text-sm text-gray-600 mt-1">
                         <Clock className="mr-1 h-4 w-4 text-amber-500" />

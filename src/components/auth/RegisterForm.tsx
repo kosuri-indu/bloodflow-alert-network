@@ -60,14 +60,14 @@ const RegisterForm = () => {
             <SelectValue placeholder="Blood Type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="A+">A+</SelectItem>
-            <SelectItem value="A-">A-</SelectItem>
-            <SelectItem value="B+">B+</SelectItem>
-            <SelectItem value="B-">B-</SelectItem>
-            <SelectItem value="AB+">AB+</SelectItem>
-            <SelectItem value="AB-">AB-</SelectItem>
-            <SelectItem value="O+">O+</SelectItem>
-            <SelectItem value="O-">O-</SelectItem>
+            <SelectItem value="A+">A Rh+ (A+)</SelectItem>
+            <SelectItem value="A-">A Rh- (A-)</SelectItem>
+            <SelectItem value="B+">B Rh+ (B+)</SelectItem>
+            <SelectItem value="B-">B Rh- (B-)</SelectItem>
+            <SelectItem value="AB+">AB Rh+ (AB+)</SelectItem>
+            <SelectItem value="AB-">AB Rh- (AB-)</SelectItem>
+            <SelectItem value="O+">O Rh+ (O+)</SelectItem>
+            <SelectItem value="O-">O Rh- (O-)</SelectItem>
           </SelectContent>
         </Select>
 

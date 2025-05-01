@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,7 @@ import AiMatchingCard from "@/components/AiMatchingCard";
 const mockRequests = [
   {
     id: "1",
-    bloodType: "O+",
+    bloodType: "O Rh+ (O+)",
     hospital: "City Hospital",
     urgency: "critical" as const,
     distance: 3.2,
@@ -34,7 +33,7 @@ const mockRequests = [
   },
   {
     id: "2",
-    bloodType: "O-",
+    bloodType: "O Rh- (O-)",
     hospital: "General Hospital",
     urgency: "urgent" as const,
     distance: 4.8,
@@ -43,7 +42,7 @@ const mockRequests = [
   },
   {
     id: "3",
-    bloodType: "B+",
+    bloodType: "B Rh+ (B+)",
     hospital: "Medical Center",
     urgency: "standard" as const,
     distance: 2.1,
@@ -111,7 +110,7 @@ const DashboardPage = () => {
                     <DropletIcon className="h-6 w-6 text-red-600" />
                   </div>
                   <p className="text-sm text-gray-500">Blood Type</p>
-                  <p className="text-2xl font-bold">O+</p>
+                  <p className="text-2xl font-bold">O Rh+ (O+)</p>
                 </CardContent>
               </Card>
               
@@ -167,7 +166,7 @@ const DashboardPage = () => {
                         <div className="absolute top-2 right-2">
                           <Badge className="bg-red-600">Match: 98%</Badge>
                         </div>
-                        <p className="font-semibold">Blood Type: O+</p>
+                        <p className="font-semibold">Blood Type: O Rh+ (O+)</p>
                         <p className="text-sm text-gray-600">City Hospital - 3.2km away</p>
                         <div className="flex justify-between items-center mt-2">
                           <div className="flex items-center text-xs text-gray-500">
@@ -182,7 +181,7 @@ const DashboardPage = () => {
                         <div className="absolute top-2 right-2">
                           <Badge className="bg-amber-600">Match: 85%</Badge>
                         </div>
-                        <p className="font-semibold">Blood Type: O-</p>
+                        <p className="font-semibold">Blood Type: O Rh- (O-)</p>
                         <p className="text-sm text-gray-600">General Hospital - 4.8km away</p>
                         <div className="flex justify-between items-center mt-2">
                           <div className="flex items-center text-xs text-gray-500">
@@ -339,14 +338,14 @@ const DashboardPage = () => {
                           <div>
                             <label className="text-sm font-medium mb-1 block">Blood Type</label>
                             <select className="w-full p-2 border rounded-md">
-                              <option>A+</option>
-                              <option>A-</option>
-                              <option>B+</option>
-                              <option>B-</option>
-                              <option>AB+</option>
-                              <option>AB-</option>
-                              <option>O+</option>
-                              <option>O-</option>
+                              <option>A Rh+ (A+)</option>
+                              <option>A Rh- (A-)</option>
+                              <option>B Rh+ (B+)</option>
+                              <option>B Rh- (B-)</option>
+                              <option>AB Rh+ (AB+)</option>
+                              <option>AB Rh- (AB-)</option>
+                              <option>O Rh+ (O+)</option>
+                              <option>O Rh- (O-)</option>
                             </select>
                           </div>
                           <div>
@@ -407,7 +406,7 @@ const DashboardPage = () => {
                         <div className="flex justify-between items-center">
                           <div className="flex items-center">
                             <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                            <span>A+</span>
+                            <span>A Rh+ (A+)</span>
                           </div>
                           <span className="text-sm font-medium">68%</span>
                         </div>
@@ -418,7 +417,7 @@ const DashboardPage = () => {
                         <div className="flex justify-between items-center">
                           <div className="flex items-center">
                             <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                            <span>B+</span>
+                            <span>B Rh+ (B+)</span>
                           </div>
                           <span className="text-sm font-medium">45%</span>
                         </div>
@@ -429,7 +428,7 @@ const DashboardPage = () => {
                         <div className="flex justify-between items-center">
                           <div className="flex items-center">
                             <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                            <span>O+</span>
+                            <span>O Rh+ (O+)</span>
                           </div>
                           <span className="text-sm font-medium text-red-600">23%</span>
                         </div>
@@ -440,7 +439,7 @@ const DashboardPage = () => {
                         <div className="flex justify-between items-center">
                           <div className="flex items-center">
                             <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                            <span>O-</span>
+                            <span>O Rh- (O-)</span>
                           </div>
                           <span className="text-sm font-medium text-red-600">15%</span>
                         </div>
@@ -451,7 +450,7 @@ const DashboardPage = () => {
                         <div className="flex justify-between items-center">
                           <div className="flex items-center">
                             <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                            <span>AB+</span>
+                            <span>AB Rh+ (AB+)</span>
                           </div>
                           <span className="text-sm font-medium">72%</span>
                         </div>
@@ -462,7 +461,7 @@ const DashboardPage = () => {
                         <div className="flex justify-between items-center">
                           <div className="flex items-center">
                             <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                            <span>AB-</span>
+                            <span>AB Rh- (AB-)</span>
                           </div>
                           <span className="text-sm font-medium">59%</span>
                         </div>
@@ -531,7 +530,7 @@ const DashboardPage = () => {
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="flex items-center">
-                              <p className="font-semibold">O+ Blood • 3 Units</p>
+                              <p className="font-semibold">O Rh+ (O+) Blood • 3 Units</p>
                               <Badge variant="destructive" className="ml-2">Critical</Badge>
                             </div>
                             <p className="text-sm text-gray-600">Created: May 1, 2025 • Needed by: May 2, 2025</p>
@@ -548,7 +547,7 @@ const DashboardPage = () => {
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="flex items-center">
-                              <p className="font-semibold">A- Blood • 2 Units</p>
+                              <p className="font-semibold">A Rh- (A-) Blood • 2 Units</p>
                               <Badge className="ml-2 bg-amber-600">Urgent</Badge>
                             </div>
                             <p className="text-sm text-gray-600">Created: Apr 30, 2025 • Needed by: May 3, 2025</p>
@@ -565,7 +564,7 @@ const DashboardPage = () => {
                         <div className="flex justify-between items-start">
                           <div>
                             <div className="flex items-center">
-                              <p className="font-semibold">B+ Blood • 4 Units</p>
+                              <p className="font-semibold">B Rh+ (B+) Blood • 4 Units</p>
                               <Badge className="ml-2 bg-blue-600">Standard</Badge>
                             </div>
                             <p className="text-sm text-gray-600">Created: Apr 28, 2025 • Needed by: May 10, 2025</p>

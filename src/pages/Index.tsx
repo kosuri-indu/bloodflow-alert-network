@@ -16,7 +16,7 @@ const Index = () => {
             <Brain className="h-16 w-16 text-purple-600" />
           </div>
           <h1 className="text-5xl font-bold text-red-600 mb-6">
-            Blood<span className="text-purple-600">Match</span>AI
+            Blood<span className="text-purple-600">Flow</span>AI
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
             Connect with local blood banks and hospitals using our AI-powered matching system.
@@ -96,7 +96,7 @@ const Index = () => {
             onClick={() => navigate('/register')} 
             className="bg-purple-600 hover:bg-purple-700 text-lg px-8 py-6"
           >
-            Join BloodMatchAI Today
+            Join BloodFlowAI Today
           </Button>
         </div>
       </div>

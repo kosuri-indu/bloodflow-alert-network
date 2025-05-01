@@ -32,7 +32,7 @@ const AiMatchingCard: React.FC<AiMatchingCardProps> = ({ requests, isHospital = 
         <CardTitle className="text-xl font-bold">
           <div className="flex items-center">
             <Brain className="mr-2 h-5 w-5 text-purple-500" />
-            {isHospital ? "AI Smart Matching System" : "AI Matched Requests"}
+            {isHospital ? "BloodFlowAI Smart Matching System" : "AI Matched Requests"}
           </div>
         </CardTitle>
         <Badge variant="outline" className="bg-purple-50 text-purple-700">
@@ -43,7 +43,7 @@ const AiMatchingCard: React.FC<AiMatchingCardProps> = ({ requests, isHospital = 
         {isHospital ? (
           <div className="space-y-4">
             <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
-              <h3 className="font-medium mb-2">AI Match Parameters</h3>
+              <h3 className="font-medium mb-2">BloodFlowAI Match Parameters</h3>
               <div className="space-y-4 mb-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">

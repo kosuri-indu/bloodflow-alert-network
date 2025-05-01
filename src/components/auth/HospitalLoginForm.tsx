@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Hospital, AlertCircle } from "lucide-react";
+import { Hospital, AlertCircle, Brain } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -50,11 +50,12 @@ const HospitalLoginForm = () => {
   return (
     <Card className="w-full max-w-md p-6 space-y-6">
       <div className="flex items-center justify-center mb-2">
+        <Brain className="w-8 h-8 text-purple-600 mr-2" />
         <Hospital className="w-8 h-8 text-red-600" />
       </div>
       <div className="text-center">
         <h2 className="text-2xl font-bold text-red-600">Hospital Portal</h2>
-        <p className="text-gray-600">Access your hospital blood management dashboard</p>
+        <p className="text-gray-600">Access your hospital BloodFlowAI management dashboard</p>
       </div>
       
       <Tabs defaultValue="login" className="w-full">

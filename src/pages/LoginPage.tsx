@@ -1,11 +1,13 @@
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import LoginForm from '../components/auth/LoginForm';
 import HospitalLoginForm from '../components/auth/HospitalLoginForm';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Brain } from 'lucide-react';
 
 const LoginPage = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'donor' | 'hospital'>('donor');
 
   return (
@@ -38,6 +40,17 @@ const LoginPage = () => {
             <HospitalLoginForm />
           </TabsContent>
         </Tabs>
+        <div className="mt-4 text-center">
+          <p className="text-sm text-gray-600">
+            Don't have an account?{" "}
+            <button
+              onClick={() => navigate('/register')}
+              className="text-purple-600 hover:text-purple-800 font-medium"
+            >
+              Register here
+            </button>
+          </p>
+        </div>
       </div>
     </div>
   );

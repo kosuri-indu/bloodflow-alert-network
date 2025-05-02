@@ -1,12 +1,15 @@
 
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Menu, User, Bell, X, DropletIcon, Brain } from 'lucide-react';
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Menu, User, Bell, DropletIcon, Brain, LogOut } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from '../context/AuthContext';
 
 const Navbar: React.FC = () => {
-  const [isAuthenticated] = useState(false);
+  const { isAuthenticated, currentUser, userType, logout } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
@@ -51,13 +54,24 @@ const Navbar: React.FC = () => {
                   <Bell size={18} />
                   <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-600"></span>
                 </Button>
-                <Button
-                  variant="outline" 
-                  className="flex items-center gap-2 text-sm"
-                >
-                  <User size={16} />
-                  Profile
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline" 
+                    className="flex items-center gap-2 text-sm"
+                    onClick={() => navigate('/profile')}
+                  >
+                    <User size={16} />
+                    {userType === 'hospital' ? 'Hospital Portal' : 'My Profile'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={logout}
+                    title="Logout"
+                  >
+                    <LogOut size={16} />
+                  </Button>
+                </div>
               </>
             ) : (
               <>
@@ -87,6 +101,15 @@ const Navbar: React.FC = () => {
               </SheetTrigger>
               <SheetContent side="right">
                 <div className="flex flex-col space-y-4 mt-6">
+                  {isAuthenticated && (
+                    <div className="border-b pb-4 mb-2">
+                      <p className="font-medium text-red-600">
+                        {userType === 'hospital' ? currentUser?.hospitalName : `Hello, ${currentUser?.name}`}
+                      </p>
+                      <p className="text-sm text-gray-500">{currentUser?.email}</p>
+                    </div>
+                  )}
+                
                   <Link 
                     to="/" 
                     className="text-gray-700 hover:text-red-600 py-2 text-base font-medium"
@@ -116,8 +139,19 @@ const Navbar: React.FC = () => {
                       <Button 
                         variant="outline"
                         className="justify-start"
+                        onClick={() => navigate('/profile')}
                       >
-                        Profile
+                        {userType === 'hospital' ? 'Hospital Portal' : 'My Profile'}
+                      </Button>
+                      <Button 
+                        variant="destructive"
+                        className="justify-start"
+                        onClick={() => {
+                          logout();
+                          navigate('/');
+                        }}
+                      >
+                        Logout
                       </Button>
                     </>
                   ) : (

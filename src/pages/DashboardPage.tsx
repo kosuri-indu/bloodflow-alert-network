@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,48 +16,126 @@ import {
   Search,
   Hospital,
   Brain,
-  UserCheck
+  UserCheck 
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import AiMatchingCard from "@/components/AiMatchingCard";
-
-const mockRequests = [
-  {
-    id: "1",
-    bloodType: "O Rh+ (O+)",
-    hospital: "City Hospital",
-    urgency: "critical" as const,
-    distance: 3.2,
-    timeNeeded: "Needed within 24 hours",
-    matchPercentage: 98,
-  },
-  {
-    id: "2",
-    bloodType: "O Rh- (O-)",
-    hospital: "General Hospital",
-    urgency: "urgent" as const,
-    distance: 4.8,
-    timeNeeded: "Needed within 48 hours",
-    matchPercentage: 85,
-  },
-  {
-    id: "3",
-    bloodType: "B Rh+ (B+)",
-    hospital: "Medical Center",
-    urgency: "standard" as const,
-    distance: 2.1,
-    timeNeeded: "Needed within 3 days",
-    matchPercentage: 72,
-  }
-];
+import mockDatabaseService, { BloodRequest, DonationEvent } from "@/services/mockDatabase";
+import AiBloodMatchingSystem from "@/components/ai/AiBloodMatchingSystem";
+import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from "../context/AuthContext";
+import { format } from "date-fns";
 
 const DashboardPage = () => {
   const [userType, setUserType] = useState<"donor" | "hospital">("donor");
+  const [bloodInventory, setBloodInventory] = useState<any[]>([]);
+  const [bloodRequests, setBloodRequests] = useState<BloodRequest[]>([]);
+  const [donationHistory, setDonationHistory] = useState<any[]>([]);
+  const [nearbyBloodBanks, setNearbyBloodBanks] = useState<any[]>([]);
+  const [donorProfile, setDonorProfile] = useState<any>(null);
+  const [hospitalProfile, setHospitalProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [events, setEvents] = useState<DonationEvent[]>([]);
+  const { toast } = useToast();
+  const { currentUser } = useAuth();
 
   // For demo purposes, toggle between donor and hospital view
   const toggleUserType = () => {
     setUserType(userType === "donor" ? "hospital" : "donor");
+  };
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch data based on user type
+        if (userType === "donor") {
+          const [profile, history, requests, nearby] = await Promise.all([
+            mockDatabaseService.getDonorProfile(),
+            mockDatabaseService.getDonationHistory(),
+            mockDatabaseService.getBloodRequests(),
+            mockDatabaseService.getNearbyBloodBanks(),
+          ]);
+          
+          setDonorProfile(profile);
+          setDonationHistory(history);
+          setBloodRequests(requests);
+          setNearbyBloodBanks(nearby);
+        } else {
+          const [profile, inventory, requests, eventsData] = await Promise.all([
+            mockDatabaseService.getHospitalProfile(),
+            mockDatabaseService.getBloodInventory(),
+            mockDatabaseService.getBloodRequests(),
+            mockDatabaseService.getDonationEvents(),
+          ]);
+          
+          setHospitalProfile(profile);
+          setBloodInventory(inventory);
+          setBloodRequests(requests);
+          setEvents(eventsData);
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch dashboard data.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, [userType, toast]);
+
+  // Calculate days since last donation for donors
+  const daysSinceLastDonation = () => {
+    if (!donorProfile?.lastDonation) return "N/A";
+    
+    const lastDonationDate = new Date(donorProfile.lastDonation);
+    const today = new Date();
+    const diffTime = Math.abs(today.getTime() - lastDonationDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return `${diffDays}d ago`;
+  };
+
+  // Determine if donor is eligible to donate
+  const isDonorEligible = () => {
+    if (!donorProfile?.eligibleDate) return false;
+    
+    const eligibleDate = new Date(donorProfile.eligibleDate);
+    const today = new Date();
+    
+    return today >= eligibleDate;
+  };
+
+  // Handle registration for blood donation event
+  const handleRegisterForEvent = async (eventId: string) => {
+    try {
+      const result = await mockDatabaseService.registerForEvent(eventId, currentUser?.id || '');
+      
+      if (result.success) {
+        toast({
+          title: "Registration Successful",
+          description: "You have successfully registered for this blood donation event.",
+        });
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: result.error || "This event may be full.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error registering for event:", error);
+      toast({
+        title: "Registration Error",
+        description: "An unexpected error occurred during registration.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -100,7 +179,11 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {userType === "donor" ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
+          </div>
+        ) : userType === "donor" ? (
           // Donor Dashboard
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -110,7 +193,7 @@ const DashboardPage = () => {
                     <DropletIcon className="h-6 w-6 text-red-600" />
                   </div>
                   <p className="text-sm text-gray-500">Blood Type</p>
-                  <p className="text-2xl font-bold">O Rh+ (O+)</p>
+                  <p className="text-2xl font-bold">{donorProfile?.bloodType || "Unknown"}</p>
                 </CardContent>
               </Card>
               
@@ -120,7 +203,7 @@ const DashboardPage = () => {
                     <Calendar className="h-6 w-6 text-green-600" />
                   </div>
                   <p className="text-sm text-gray-500">Last Donation</p>
-                  <p className="text-2xl font-bold">45d ago</p>
+                  <p className="text-2xl font-bold">{daysSinceLastDonation()}</p>
                 </CardContent>
               </Card>
               
@@ -130,7 +213,7 @@ const DashboardPage = () => {
                     <TrendingUp className="h-6 w-6 text-blue-600" />
                   </div>
                   <p className="text-sm text-gray-500">Donations Made</p>
-                  <p className="text-2xl font-bold">3</p>
+                  <p className="text-2xl font-bold">{donorProfile?.donationsCount || 0}</p>
                 </CardContent>
               </Card>
               
@@ -140,16 +223,19 @@ const DashboardPage = () => {
                     <Clock className="h-6 w-6 text-amber-600" />
                   </div>
                   <p className="text-sm text-gray-500">Next Eligible</p>
-                  <p className="text-xl font-bold text-green-600">Ready</p>
+                  <p className={`text-xl font-bold ${isDonorEligible() ? 'text-green-600' : 'text-amber-600'}`}>
+                    {isDonorEligible() ? "Ready" : "Waiting"}
+                  </p>
                 </CardContent>
               </Card>
             </div>
 
             <Tabs defaultValue="blood-requests" className="w-full">
-              <TabsList className="w-full grid grid-cols-3 mb-6">
+              <TabsList className="w-full grid grid-cols-4 mb-6">
                 <TabsTrigger value="blood-requests">Blood Requests</TabsTrigger>
                 <TabsTrigger value="donation-history">Donation History</TabsTrigger>
                 <TabsTrigger value="nearby">Nearby Centers</TabsTrigger>
+                <TabsTrigger value="ai-matching">AI Matching</TabsTrigger>
               </TabsList>
 
               <TabsContent value="blood-requests">
@@ -162,39 +248,68 @@ const DashboardPage = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="p-4 bg-red-50 rounded-lg border border-red-100 relative">
-                        <div className="absolute top-2 right-2">
-                          <Badge className="bg-red-600">Match: 98%</Badge>
-                        </div>
-                        <p className="font-semibold">Blood Type: O Rh+ (O+)</p>
-                        <p className="text-sm text-gray-600">City Hospital - 3.2km away</p>
-                        <div className="flex justify-between items-center mt-2">
-                          <div className="flex items-center text-xs text-gray-500">
-                            <AlertCircle size={14} className="mr-1 text-red-500" />
-                            <span>Needed within 24 hours</span>
+                      {bloodRequests.filter(req => req.urgency !== 'standard').map((request) => (
+                        <div key={request.id} className={`p-4 rounded-lg border relative ${
+                          request.urgency === 'critical' ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'
+                        }`}>
+                          <div className="absolute top-2 right-2">
+                            <Badge className={request.matchPercentage > 90 ? 'bg-red-600' : 'bg-amber-600'}>
+                              Match: {request.matchPercentage}%
+                            </Badge>
                           </div>
-                          <Button size="sm" className="bg-red-600 hover:bg-red-700">Respond</Button>
-                        </div>
-                      </div>
-                      
-                      <div className="p-4 bg-red-50 rounded-lg border border-red-100 relative">
-                        <div className="absolute top-2 right-2">
-                          <Badge className="bg-amber-600">Match: 85%</Badge>
-                        </div>
-                        <p className="font-semibold">Blood Type: O Rh- (O-)</p>
-                        <p className="text-sm text-gray-600">General Hospital - 4.8km away</p>
-                        <div className="flex justify-between items-center mt-2">
-                          <div className="flex items-center text-xs text-gray-500">
-                            <AlertCircle size={14} className="mr-1 text-amber-500" />
-                            <span>Needed within 48 hours</span>
+                          <p className="font-semibold">Blood Type: {request.bloodType}</p>
+                          <p className="text-sm text-gray-600">{request.hospital} - {request.distance}km away</p>
+                          <div className="flex justify-between items-center mt-2">
+                            <div className="flex items-center text-xs text-gray-500">
+                              <AlertCircle size={14} className={`mr-1 ${
+                                request.urgency === 'critical' ? 'text-red-500' : 'text-amber-500'
+                              }`} />
+                              <span>{request.timeNeeded}</span>
+                            </div>
+                            <Button size="sm" className="bg-red-600 hover:bg-red-700">Respond</Button>
                           </div>
-                          <Button size="sm" className="bg-red-600 hover:bg-red-700">Respond</Button>
                         </div>
-                      </div>
+                      ))}
+
+                      {bloodRequests.filter(req => req.urgency !== 'standard').length === 0 && (
+                        <div className="text-center py-6 text-gray-500">
+                          No urgent blood requests at the moment.
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                   
-                  <AiMatchingCard requests={mockRequests} />
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xl">Standard Requests</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {bloodRequests.filter(req => req.urgency === 'standard').map((request) => (
+                        <div key={request.id} className="p-4 bg-blue-50 rounded-lg border border-blue-100 relative">
+                          <div className="absolute top-2 right-2">
+                            <Badge className="bg-blue-600">
+                              Match: {request.matchPercentage}%
+                            </Badge>
+                          </div>
+                          <p className="font-semibold">Blood Type: {request.bloodType}</p>
+                          <p className="text-sm text-gray-600">{request.hospital} - {request.distance}km away</p>
+                          <div className="flex justify-between items-center mt-2">
+                            <div className="flex items-center text-xs text-gray-500">
+                              <AlertCircle size={14} className="mr-1 text-blue-500" />
+                              <span>{request.timeNeeded}</span>
+                            </div>
+                            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">Respond</Button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {bloodRequests.filter(req => req.urgency === 'standard').length === 0 && (
+                        <div className="text-center py-6 text-gray-500">
+                          No standard blood requests at the moment.
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
               </TabsContent>
               
@@ -205,29 +320,23 @@ const DashboardPage = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                        <div>
-                          <p className="font-medium">City Blood Bank</p>
-                          <p className="text-sm text-gray-500">March 15, 2025</p>
+                      {donationHistory.map((donation) => (
+                        <div key={donation.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+                          <div>
+                            <p className="font-medium">{donation.hospitalName}</p>
+                            <p className="text-sm text-gray-500">
+                              {format(new Date(donation.date), 'MMMM d, yyyy')}
+                            </p>
+                          </div>
+                          <Badge className="bg-green-600">{donation.status === 'completed' ? 'Completed' : donation.status}</Badge>
                         </div>
-                        <Badge className="bg-green-600">Completed</Badge>
-                      </div>
-                      
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                        <div>
-                          <p className="font-medium">General Hospital Drive</p>
-                          <p className="text-sm text-gray-500">January 3, 2025</p>
+                      ))}
+
+                      {donationHistory.length === 0 && (
+                        <div className="text-center py-6 text-gray-500">
+                          You haven't made any donations yet.
                         </div>
-                        <Badge className="bg-green-600">Completed</Badge>
-                      </div>
-                      
-                      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-                        <div>
-                          <p className="font-medium">Community Blood Drive</p>
-                          <p className="text-sm text-gray-500">November 22, 2024</p>
-                        </div>
-                        <Badge className="bg-green-600">Completed</Badge>
-                      </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -240,37 +349,34 @@ const DashboardPage = () => {
                     <h3 className="text-lg font-medium">Nearby Donation Centers</h3>
                   </div>
                   <div className="space-y-4">
-                    <div className="p-4 bg-white border rounded-lg">
-                      <div className="flex justify-between">
-                        <div>
-                          <p className="font-medium">City Blood Bank</p>
-                          <p className="text-sm text-gray-500">2.3 km away • Open until 7 PM</p>
+                    {nearbyBloodBanks.map((bank) => (
+                      <div key={bank.id} className="p-4 bg-white border rounded-lg">
+                        <div className="flex justify-between">
+                          <div>
+                            <p className="font-medium">{bank.name}</p>
+                            <p className="text-sm text-gray-500">
+                              {bank.distance} km away • Open {bank.openHours}
+                            </p>
+                          </div>
+                          <Button size="sm" variant="outline">Directions</Button>
                         </div>
-                        <Button size="sm" variant="outline">Directions</Button>
                       </div>
-                    </div>
-                    
-                    <div className="p-4 bg-white border rounded-lg">
-                      <div className="flex justify-between">
-                        <div>
-                          <p className="font-medium">General Hospital</p>
-                          <p className="text-sm text-gray-500">4.1 km away • Open 24/7</p>
-                        </div>
-                        <Button size="sm" variant="outline">Directions</Button>
+                    ))}
+
+                    {nearbyBloodBanks.length === 0 && (
+                      <div className="text-center py-6 text-gray-500">
+                        No nearby donation centers found.
                       </div>
-                    </div>
-                    
-                    <div className="p-4 bg-white border rounded-lg">
-                      <div className="flex justify-between">
-                        <div>
-                          <p className="font-medium">Red Cross Donation Center</p>
-                          <p className="text-sm text-gray-500">5.7 km away • Open until 5 PM</p>
-                        </div>
-                        <Button size="sm" variant="outline">Directions</Button>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="ai-matching">
+                <AiBloodMatchingSystem 
+                  selectedRequest={bloodRequests.length > 0 ? bloodRequests[0] : undefined}
+                  isHospital={false}
+                />
               </TabsContent>
             </Tabs>
           </>
@@ -294,7 +400,9 @@ const DashboardPage = () => {
                     <DropletIcon className="h-6 w-6 text-red-600" />
                   </div>
                   <p className="text-sm text-gray-500">Blood Units</p>
-                  <p className="text-2xl font-bold">145</p>
+                  <p className="text-2xl font-bold">
+                    {bloodInventory.reduce((sum, item) => sum + item.units, 0)}
+                  </p>
                 </CardContent>
               </Card>
               
@@ -314,80 +422,23 @@ const DashboardPage = () => {
                     <AlertCircle className="h-6 w-6 text-amber-600" />
                   </div>
                   <p className="text-sm text-gray-500">Critical Requests</p>
-                  <p className="text-2xl font-bold text-amber-600">3</p>
+                  <p className="text-2xl font-bold text-amber-600">
+                    {bloodRequests.filter(req => req.urgency === 'critical').length}
+                  </p>
                 </CardContent>
               </Card>
             </div>
 
             <Tabs defaultValue="ai-matching" className="w-full">
-              <TabsList className="w-full grid grid-cols-3 mb-6">
+              <TabsList className="w-full grid grid-cols-4 mb-6">
                 <TabsTrigger value="ai-matching">AI Matching</TabsTrigger>
                 <TabsTrigger value="inventory">Blood Inventory</TabsTrigger>
                 <TabsTrigger value="requests">My Requests</TabsTrigger>
+                <TabsTrigger value="events">Donation Events</TabsTrigger>
               </TabsList>
 
               <TabsContent value="ai-matching">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-xl">Create Blood Request</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="text-sm font-medium mb-1 block">Blood Type</label>
-                            <select className="w-full p-2 border rounded-md">
-                              <option>A Rh+ (A+)</option>
-                              <option>A Rh- (A-)</option>
-                              <option>B Rh+ (B+)</option>
-                              <option>B Rh- (B-)</option>
-                              <option>AB Rh+ (AB+)</option>
-                              <option>AB Rh- (AB-)</option>
-                              <option>O Rh+ (O+)</option>
-                              <option>O Rh- (O-)</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="text-sm font-medium mb-1 block">Urgency</label>
-                            <select className="w-full p-2 border rounded-md">
-                              <option>Standard</option>
-                              <option>Urgent</option>
-                              <option>Critical</option>
-                            </select>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium mb-1 block">Units Required</label>
-                          <Input type="number" min="1" defaultValue="2" />
-                        </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium mb-1 block">Required By</label>
-                          <Input type="datetime-local" />
-                        </div>
-                        
-                        <div>
-                          <label className="text-sm font-medium mb-1 block">Special Requirements (optional)</label>
-                          <Input placeholder="E.g., pediatric, leukoreduced, etc." />
-                        </div>
-                        
-                        <div className="flex items-center pt-2">
-                          <input type="checkbox" id="ai-match" className="mr-2" />
-                          <label htmlFor="ai-match" className="text-sm">Use AI to find the best genetic matches</label>
-                        </div>
-                        
-                        <Button className="w-full bg-purple-600 hover:bg-purple-700 flex items-center justify-center gap-2">
-                          <Brain className="h-4 w-4" />
-                          Find Donors with AI
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <AiMatchingCard requests={mockRequests} isHospital={true} />
-                </div>
+                <AiBloodMatchingSystem />
               </TabsContent>
               
               <TabsContent value="inventory">
@@ -402,71 +453,27 @@ const DashboardPage = () => {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center">
-                            <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                            <span>A Rh+ (A+)</span>
+                      {bloodInventory.map((item) => (
+                        <div key={item.bloodType} className="space-y-3">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center">
+                              <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
+                              <span>{item.bloodType}</span>
+                            </div>
+                            <span className={`text-sm font-medium ${
+                              item.units < 20 ? 'text-red-600' : 
+                              item.units < 50 ? 'text-amber-600' : 
+                              'text-gray-900'
+                            }`}>
+                              {Math.round((item.units / 100) * 100)}%
+                            </span>
                           </div>
-                          <span className="text-sm font-medium">68%</span>
+                          <Progress 
+                            value={Math.round((item.units / 100) * 100)} 
+                            className="h-2"
+                          />
                         </div>
-                        <Progress value={68} className="h-2" />
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center">
-                            <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                            <span>B Rh+ (B+)</span>
-                          </div>
-                          <span className="text-sm font-medium">45%</span>
-                        </div>
-                        <Progress value={45} className="h-2" />
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center">
-                            <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                            <span>O Rh+ (O+)</span>
-                          </div>
-                          <span className="text-sm font-medium text-red-600">23%</span>
-                        </div>
-                        <Progress value={23} className="h-2" />
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center">
-                            <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                            <span>O Rh- (O-)</span>
-                          </div>
-                          <span className="text-sm font-medium text-red-600">15%</span>
-                        </div>
-                        <Progress value={15} className="h-2" />
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center">
-                            <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                            <span>AB Rh+ (AB+)</span>
-                          </div>
-                          <span className="text-sm font-medium">72%</span>
-                        </div>
-                        <Progress value={72} className="h-2" />
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center">
-                            <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                            <span>AB Rh- (AB-)</span>
-                          </div>
-                          <span className="text-sm font-medium">59%</span>
-                        </div>
-                        <Progress value={59} className="h-2" />
-                      </div>
+                      ))}
                     </CardContent>
                   </Card>
                   
@@ -484,35 +491,19 @@ const DashboardPage = () => {
                       </div>
                       
                       <div className="space-y-3">
-                        <div className="p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
-                          <div className="flex justify-between">
-                            <div>
-                              <p className="font-medium">Central Blood Bank</p>
-                              <p className="text-sm text-gray-500">5.2 km • 23 O+ units available</p>
+                        {nearbyBloodBanks.map((bank) => (
+                          <div key={bank.id} className="p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
+                            <div className="flex justify-between">
+                              <div>
+                                <p className="font-medium">{bank.name}</p>
+                                <p className="text-sm text-gray-500">
+                                  {bank.distance} km • {bank.availableUnits['O Rh+ (O+)']} O+ units available
+                                </p>
+                              </div>
+                              <Button size="sm" variant="outline">Request</Button>
                             </div>
-                            <Button size="sm" variant="outline">Request</Button>
                           </div>
-                        </div>
-                        
-                        <div className="p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
-                          <div className="flex justify-between">
-                            <div>
-                              <p className="font-medium">Regional Medical Center</p>
-                              <p className="text-sm text-gray-500">7.8 km • 18 O+ units available</p>
-                            </div>
-                            <Button size="sm" variant="outline">Request</Button>
-                          </div>
-                        </div>
-                        
-                        <div className="p-3 border rounded-md hover:bg-gray-50 cursor-pointer">
-                          <div className="flex justify-between">
-                            <div>
-                              <p className="font-medium">City Blood Services</p>
-                              <p className="text-sm text-gray-500">3.6 km • 9 O+ units available</p>
-                            </div>
-                            <Button size="sm" variant="outline">Request</Button>
-                          </div>
-                        </div>
+                        ))}
                       </div>
                     </CardContent>
                   </Card>
@@ -526,59 +517,139 @@ const DashboardPage = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center">
-                              <p className="font-semibold">O Rh+ (O+) Blood • 3 Units</p>
-                              <Badge variant="destructive" className="ml-2">Critical</Badge>
+                      {bloodRequests.map((request) => (
+                        <div 
+                          key={request.id}
+                          className={`p-4 border rounded-lg ${
+                            request.urgency === 'critical' ? 'bg-red-50 border-red-200' :
+                            request.urgency === 'urgent' ? 'bg-amber-50 border-amber-200' :
+                            'bg-blue-50 border-blue-200'
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="flex items-center">
+                                <p className="font-semibold">
+                                  {request.bloodType} • {request.units} Units
+                                </p>
+                                <Badge 
+                                  className={`ml-2 ${
+                                    request.urgency === 'critical' ? 'bg-red-500' :
+                                    request.urgency === 'urgent' ? 'bg-amber-600' :
+                                    'bg-blue-600'
+                                  }`}
+                                >
+                                  {request.urgency.charAt(0).toUpperCase() + request.urgency.slice(1)}
+                                </Badge>
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                Created: {format(new Date(request.createdAt), 'MMM d, yyyy')} • 
+                                Needed by: {format(new Date(request.neededBy), 'MMM d, yyyy')}
+                              </p>
+                              <div className="flex items-center mt-1 text-sm text-green-600">
+                                <UserCheck className="h-4 w-4 mr-1" />
+                                <span>
+                                  {request.urgency === 'critical' ? '2 donors confirmed' :
+                                   request.urgency === 'urgent' ? '1 donor confirmed' :
+                                   '4 donors confirmed'}
+                                </span>
+                              </div>
                             </div>
-                            <p className="text-sm text-gray-600">Created: May 1, 2025 • Needed by: May 2, 2025</p>
-                            <div className="flex items-center mt-1 text-sm text-green-600">
-                              <UserCheck className="h-4 w-4 mr-1" />
-                              <span>2 donors confirmed</span>
-                            </div>
+                            <Button size="sm" variant="outline">View Matches</Button>
                           </div>
-                          <Button size="sm" variant="outline">View Matches</Button>
                         </div>
-                      </div>
-                      
-                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center">
-                              <p className="font-semibold">A Rh- (A-) Blood • 2 Units</p>
-                              <Badge className="ml-2 bg-amber-600">Urgent</Badge>
-                            </div>
-                            <p className="text-sm text-gray-600">Created: Apr 30, 2025 • Needed by: May 3, 2025</p>
-                            <div className="flex items-center mt-1 text-sm text-amber-600">
-                              <UserCheck className="h-4 w-4 mr-1" />
-                              <span>1 donor confirmed</span>
-                            </div>
-                          </div>
-                          <Button size="sm" variant="outline">View Matches</Button>
-                        </div>
-                      </div>
-                      
-                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="flex items-center">
-                              <p className="font-semibold">B Rh+ (B+) Blood • 4 Units</p>
-                              <Badge className="ml-2 bg-blue-600">Standard</Badge>
-                            </div>
-                            <p className="text-sm text-gray-600">Created: Apr 28, 2025 • Needed by: May 10, 2025</p>
-                            <div className="flex items-center mt-1 text-sm text-blue-600">
-                              <UserCheck className="h-4 w-4 mr-1" />
-                              <span>4 donors confirmed</span>
-                            </div>
-                          </div>
-                          <Button size="sm" variant="outline">View Matches</Button>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="events">
+                <div className="grid md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xl">Create Blood Donation Event</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Event Title</label>
+                          <Input placeholder="E.g., Monthly Blood Drive" />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium mb-1 block">Event Date</label>
+                            <Input type="date" />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium mb-1 block">Event Time</label>
+                            <Input type="time" />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Event Location</label>
+                          <Input placeholder="Full address of the event" />
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Available Slots</label>
+                          <Input type="number" min="1" defaultValue="30" />
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium mb-1 block">Event Description</label>
+                          <Input placeholder="Brief description of the event" />
+                        </div>
+                        
+                        <Button className="w-full bg-red-600 hover:bg-red-700">
+                          Create Event
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xl">Upcoming Events</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-4">
+                        {events.map((event) => (
+                          <div key={event.id} className="p-4 bg-white border rounded-lg">
+                            <h3 className="font-semibold">{event.title}</h3>
+                            <div className="text-sm text-gray-600 space-y-1 mt-1">
+                              <div className="flex items-center">
+                                <Calendar className="h-4 w-4 mr-1 text-red-500" />
+                                <span>{format(new Date(event.date), 'PP')}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <Map className="h-4 w-4 mr-1 text-red-500" />
+                                <span>{event.location}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <Users className="h-4 w-4 mr-1 text-red-500" />
+                                <span>{event.registeredDonors} / {event.slots} slots filled</span>
+                              </div>
+                            </div>
+                            <div className="mt-2">
+                              <Button size="sm" variant="outline" className="w-full">
+                                Edit Event
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+
+                        {events.length === 0 && (
+                          <div className="text-center py-4 text-gray-500">
+                            No upcoming events.
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
             </Tabs>
           </>

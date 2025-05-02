@@ -10,7 +10,7 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="col-span-1 md:col-span-2">
-            <h3 className="text-xl font-semibold text-red-600 mb-4">BloodFlow</h3>
+            <h3 className="text-xl font-semibold text-red-600 mb-4">BloodBank AI</h3>
             <p className="text-gray-600 max-w-md">
               Connecting blood donors with those in need. Our platform makes blood donation 
               easier and more accessible, helping save lives across the community.
@@ -27,10 +27,10 @@ const Footer = () => {
                 <Link to="/dashboard" className="text-gray-600 hover:text-red-600">Dashboard</Link>
               </li>
               <li>
-                <Link to="/login" className="text-gray-600 hover:text-red-600">Login</Link>
+                <Link to="/events" className="text-gray-600 hover:text-red-600">Events</Link>
               </li>
               <li>
-                <Link to="/register" className="text-gray-600 hover:text-red-600">Register</Link>
+                <Link to="/donate" className="text-gray-600 hover:text-red-600">Donate</Link>
               </li>
             </ul>
           </div>
@@ -38,8 +38,8 @@ const Footer = () => {
           <div>
             <h4 className="text-lg font-medium text-gray-900 mb-4">Emergency Contact</h4>
             <ul className="space-y-2 text-gray-600">
-              <li>Emergency: (555) 999-9999</li>
-              <li>Email: emergency@bloodflow.com</li>
+              <li>Emergency: (+91) 999-999-9999</li>
+              <li>Email: emergency@bloodbankai.com</li>
               <li>Available 24/7</li>
             </ul>
           </div>
@@ -47,7 +47,7 @@ const Footer = () => {
         
         <div className="mt-8 pt-8 border-t border-gray-200">
           <p className="text-center text-gray-500">
-            © {currentYear} BloodFlow. All rights reserved.
+            © {currentYear} BloodBank AI. All rights reserved.
           </p>
         </div>
       </div>

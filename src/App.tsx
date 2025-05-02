@@ -15,7 +15,14 @@ import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: 1,
+    },
+  },
+});
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -31,7 +38,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 // The Routes component that uses AuthProvider
 const AppRoutes = () => (
   <AuthProvider>
-    <div className="min-h-screen flex flex-col">
+    <div className="flex flex-col min-h-screen">
       <Navbar />
       <main className="flex-grow">
         <Routes>

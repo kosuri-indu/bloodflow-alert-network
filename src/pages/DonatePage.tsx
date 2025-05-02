@@ -1,16 +1,84 @@
 
+import { useState } from 'react';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { IndianRupee } from "lucide-react";
+import { useToast } from '@/components/ui/use-toast';
+import paymentService from '@/services/paymentService';
 
 const DonatePage = () => {
+  const [customAmount, setCustomAmount] = useState<number | ''>('');
+  const [isProcessing, setIsProcessing] = useState<number | null>(null);
+  const { toast } = useToast();
+
   const donationOptions = [
     { amount: 1000, description: "Provides essential blood testing kits" },
     { amount: 2500, description: "Supports blood storage equipment maintenance" },
     { amount: 5000, description: "Helps organize local blood drives" },
     { amount: 10000, description: "Funds comprehensive donor support programs" }
   ];
+
+  const handleDonate = async (amount: number) => {
+    if (amount <= 0) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter a valid donation amount.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(amount);
+    
+    try {
+      // Call payment service
+      const { success, orderId } = await paymentService.initiatePayment({
+        amount: amount,
+        currency: 'INR',
+        name: 'BloodBank AI',
+        description: 'Donation to BloodBank AI',
+        theme: {
+          color: '#dc2626', // red-600
+        },
+      });
+      
+      if (success) {
+        // Record the payment in our database
+        await paymentService.recordPayment({
+          orderId,
+          amount,
+          status: 'pending',
+          purpose: 'donation',
+        });
+        
+        // In a real implementation, we'd wait for a webhook or callback to confirm the payment
+        // For now, we'll assume it's successful for demo purposes
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      toast({
+        title: "Payment Error",
+        description: "There was a problem processing your donation. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(null);
+    }
+  };
+
+  const handleCustomDonation = () => {
+    if (!customAmount || customAmount < 100) {
+      toast({
+        title: "Invalid Amount",
+        description: "Please enter an amount of ₹100 or more.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    handleDonate(Number(customAmount));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -29,8 +97,19 @@ const DonatePage = () => {
                   {option.amount.toLocaleString('en-IN')}
                 </h3>
                 <p className="text-gray-600 mb-4">{option.description}</p>
-                <Button className="w-full bg-red-600 hover:bg-red-700">
-                  Donate ₹{option.amount.toLocaleString('en-IN')}
+                <Button 
+                  className="w-full bg-red-600 hover:bg-red-700"
+                  onClick={() => handleDonate(option.amount)}
+                  disabled={isProcessing === option.amount}
+                >
+                  {isProcessing === option.amount ? (
+                    <span className="flex items-center justify-center">
+                      <span className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                      Processing...
+                    </span>
+                  ) : (
+                    `Donate ₹${option.amount.toLocaleString('en-IN')}`
+                  )}
                 </Button>
               </div>
             </Card>
@@ -45,12 +124,25 @@ const DonatePage = () => {
               <Input
                 type="number"
                 placeholder="Enter custom amount"
-                min="1"
+                min="100"
                 className="text-lg pl-8"
+                value={customAmount}
+                onChange={(e) => setCustomAmount(e.target.value ? Number(e.target.value) : '')}
               />
             </div>
-            <Button className="w-full bg-red-600 hover:bg-red-700">
-              Donate Custom Amount
+            <Button 
+              className="w-full bg-red-600 hover:bg-red-700"
+              onClick={handleCustomDonation}
+              disabled={isProcessing !== null}
+            >
+              {isProcessing !== null && isProcessing === customAmount ? (
+                <span className="flex items-center justify-center">
+                  <span className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
+                  Processing...
+                </span>
+              ) : (
+                "Donate Custom Amount"
+              )}
             </Button>
           </div>
         </Card>

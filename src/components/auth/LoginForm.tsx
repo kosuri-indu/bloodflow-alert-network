@@ -23,7 +23,7 @@ const LoginForm = () => {
     <Card className="w-full max-w-md p-6 space-y-6">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-red-600">Welcome Back</h2>
-        <p className="text-gray-600">Login to your BloodFlowAI account</p>
+        <p className="text-gray-600">Login to your BloodBankAI account</p>
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">

@@ -14,7 +14,7 @@ const RegisterPage = () => {
             <Brain className="h-10 w-10 text-purple-600" />
           </div>
           <h1 className="mt-2 text-2xl font-bold">
-            BloodFlow<span className="text-purple-600">AI</span>
+            BloodBank<span className="text-purple-600">AI</span>
           </h1>
           <p className="text-sm text-gray-600 mt-1">
             AI-powered blood donation matching platform

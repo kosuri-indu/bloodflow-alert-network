@@ -55,7 +55,7 @@ const HospitalLoginForm = () => {
       </div>
       <div className="text-center">
         <h2 className="text-2xl font-bold text-red-600">Hospital Portal</h2>
-        <p className="text-gray-600">Access your hospital BloodFlowAI management dashboard</p>
+        <p className="text-gray-600">Access your hospital BloodBankAI management dashboard</p>
       </div>
       
       <Tabs defaultValue="login" className="w-full">

@@ -1,7 +1,44 @@
-
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import mockDatabaseService, { AiMatch, BloodRequest } from '@/services/mockDatabase';
+
+// Blood compatibility chart - defining which blood types can donate to which recipients
+const bloodCompatibility = {
+  'A Rh+ (A+)': ['A Rh+ (A+)', 'AB Rh+ (AB+)'],
+  'A Rh- (A-)': ['A Rh+ (A+)', 'A Rh- (A-)', 'AB Rh+ (AB+)', 'AB Rh- (AB-)'],
+  'B Rh+ (B+)': ['B Rh+ (B+)', 'AB Rh+ (AB+)'],
+  'B Rh- (B-)': ['B Rh+ (B+)', 'B Rh- (B-)', 'AB Rh+ (AB+)', 'AB Rh- (AB-)'],
+  'AB Rh+ (AB+)': ['AB Rh+ (AB+)'],
+  'AB Rh- (AB-)': ['AB Rh+ (AB+)', 'AB Rh- (AB-)'],
+  'O Rh+ (O+)': ['A Rh+ (A+)', 'B Rh+ (B+)', 'AB Rh+ (AB+)', 'O Rh+ (O+)'],
+  'O Rh- (O-)': ['A Rh+ (A+)', 'A Rh- (A-)', 'B Rh+ (B+)', 'B Rh- (B-)', 'AB Rh+ (AB+)', 'AB Rh- (AB-)', 'O Rh+ (O+)', 'O Rh- (O-)'],
+};
+
+// Function to calculate blood compatibility score
+const calculateBloodCompatibilityScore = (donorBloodType: string, recipientBloodType: string): number => {
+  // Perfect match - same blood type
+  if (donorBloodType === recipientBloodType) {
+    return 100;
+  }
+  
+  // Check if donor can donate to recipient
+  if (bloodCompatibility[donorBloodType]?.includes(recipientBloodType)) {
+    // Universal donor (O-) gets a high score but not 100 (reserve 100 for exact matches)
+    if (donorBloodType === 'O Rh- (O-)') {
+      return 95;
+    }
+    // Other compatible types get a good score
+    return 90;
+  }
+  
+  // Check if recipient can receive from donor (reverse compatibility check)
+  if (bloodCompatibility[recipientBloodType]?.includes(donorBloodType)) {
+    return 80; // Less optimal but potentially usable in emergencies
+  }
+  
+  // Not compatible
+  return 0;
+}
 
 export function useAiMatching() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -17,13 +54,36 @@ export function useAiMatching() {
 
     try {
       // Simulate AI processing
-      const result: any = await mockDatabaseService.processAiMatching(request.id);
+      const result = await mockDatabaseService.processAiMatching(request.id);
       
       if (result.success) {
-        setMatches(result.matches);
+        // Calculate final scores based on blood type compatibility
+        const enhancedMatches = result.matches.map((match: AiMatch) => {
+          const compatibilityScore = calculateBloodCompatibilityScore(match.bloodType, result.requestBloodType);
+          
+          // If blood types are completely incompatible, filter them out
+          if (compatibilityScore === 0) return null;
+          
+          // Apply blood compatibility as a major factor in the final score
+          // We weight blood compatibility at 70% and other factors at 30%
+          const finalScore = Math.round(
+            (compatibilityScore * 0.7) + (match.matchScore * 0.3)
+          );
+          
+          return {
+            ...match,
+            matchScore: finalScore,
+            compatibilityScore
+          };
+        }).filter(Boolean);
+        
+        // Sort by match score (highest first)
+        const sortedMatches = enhancedMatches.sort((a, b) => b.matchScore - a.matchScore);
+        
+        setMatches(sortedMatches);
         toast({
           title: "AI Matching Complete",
-          description: `Found ${result.matches.length} potential donors for this request.`,
+          description: `Found ${sortedMatches.length} potential donors for this request.`,
         });
       } else {
         toast({

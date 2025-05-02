@@ -12,7 +12,6 @@ import {
   TrendingUp, 
   Clock,
   Map,
-  Bell,
   Search,
   Hospital,
   Brain,
@@ -22,12 +21,13 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import mockDatabaseService, { BloodRequest, DonationEvent } from "@/services/mockDatabase";
 import AiBloodMatchingSystem from "@/components/ai/AiBloodMatchingSystem";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from "../context/AuthContext";
 import { format } from "date-fns";
 
 const DashboardPage = () => {
-  const [userType, setUserType] = useState<"donor" | "hospital">("donor");
+  // For demo purposes, we'll start with "hospital" as default
+  const [userType, setUserType] = useState<"donor" | "hospital">("hospital");
   const [bloodInventory, setBloodInventory] = useState<any[]>([]);
   const [bloodRequests, setBloodRequests] = useState<BloodRequest[]>([]);
   const [donationHistory, setDonationHistory] = useState<any[]>([]);
@@ -124,7 +124,7 @@ const DashboardPage = () => {
       } else {
         toast({
           title: "Registration Failed",
-          description: result.message || "This event may be full.", // Changed from .error to .message
+          description: result.message || "This event may be full.",
           variant: "destructive",
         });
       }
@@ -135,6 +135,38 @@ const DashboardPage = () => {
         description: "An unexpected error occurred during registration.",
         variant: "destructive",
       });
+    }
+  };
+
+  // Handle donation scheduling
+  const handleScheduleDonation = () => {
+    toast({
+      title: "Donation Scheduling",
+      description: "We're redirecting you to our scheduling system.",
+    });
+    
+    // In a real app, this would redirect to a scheduling page
+    setTimeout(() => {
+      toast({
+        title: "Appointment Scheduled",
+        description: "Your donation appointment has been confirmed.",
+      });
+    }, 2000);
+  };
+
+  // Handle blood request creation
+  const handleCreateBloodRequest = () => {
+    if (userType === "hospital") {
+      toast({
+        title: "Create Blood Request",
+        description: "Switching to AI matching to create a new blood request.",
+      });
+      
+      // In a real app, we would navigate to the AI matching tab
+      const aiMatchingTab = document.querySelector('[value="ai-matching"]') as HTMLElement;
+      if (aiMatchingTab) {
+        aiMatchingTab.click();
+      }
     }
   };
 
@@ -160,21 +192,13 @@ const DashboardPage = () => {
             </Button>
             
             {userType === "donor" ? (
-              <>
-                <Button variant="outline" className="flex items-center gap-2">
-                  <Bell size={16} />
-                  <Badge variant="secondary" className="ml-1">3</Badge>
-                </Button>
-                <Button className="bg-red-600 hover:bg-red-700">Schedule Donation</Button>
-              </>
+              <Button className="bg-red-600 hover:bg-red-700" onClick={handleScheduleDonation}>
+                Schedule Donation
+              </Button>
             ) : (
-              <>
-                <Button variant="outline" className="flex items-center gap-2">
-                  <Bell size={16} />
-                  <Badge variant="secondary" className="ml-1">5</Badge>
-                </Button>
-                <Button className="bg-red-600 hover:bg-red-700">Create Blood Request</Button>
-              </>
+              <Button className="bg-red-600 hover:bg-red-700" onClick={handleCreateBloodRequest}>
+                Create Blood Request
+              </Button>
             )}
           </div>
         </div>
@@ -655,6 +679,9 @@ const DashboardPage = () => {
           </>
         )}
       </div>
+      
+      {/* Add more space before footer */}
+      <div className="py-12"></div>
     </div>
   );
 };

@@ -22,7 +22,6 @@ const AiBloodMatchingSystem = ({ selectedRequest, isHospital = true }: AiBloodMa
   const [urgency, setUrgency] = useState<'standard' | 'urgent' | 'critical'>('urgent');
   const [units, setUnits] = useState<number>(2);
   const [requiredBy, setRequiredBy] = useState<string>('');
-  const [specialRequirements, setSpecialRequirements] = useState<string>('');
   const [requests, setRequests] = useState<BloodRequest[]>([]);
   const [activeRequest, setActiveRequest] = useState<BloodRequest | undefined>(selectedRequest);
   const [isLoading, setIsLoading] = useState(false);
@@ -31,7 +30,7 @@ const AiBloodMatchingSystem = ({ selectedRequest, isHospital = true }: AiBloodMa
 
   // AI Parameters
   const [distancePriority, setDistancePriority] = useState([75]);
-  const [geneticPriority, setGeneticPriority] = useState([50]);
+  const [geneticPriority, setGeneticPriority] = useState([90]); // Increased emphasis on genetic/blood type
   const [qualityPriority, setQualityPriority] = useState([50]);
 
   useEffect(() => {
@@ -55,6 +54,53 @@ const AiBloodMatchingSystem = ({ selectedRequest, isHospital = true }: AiBloodMa
       runAiMatching(activeRequest);
     }
   }, [activeRequest]);
+
+  // Blood compatibility explanation based on selected blood type
+  const getBloodCompatibilityInfo = (selectedBloodType: string) => {
+    const bloodCompatibilityMap: Record<string, { canDonateTo: string[], canReceiveFrom: string[] }> = {
+      'A Rh+ (A+)': {
+        canDonateTo: ['A Rh+ (A+)', 'AB Rh+ (AB+)'],
+        canReceiveFrom: ['A Rh+ (A+)', 'A Rh- (A-)', 'O Rh+ (O+)', 'O Rh- (O-)'],
+      },
+      'A Rh- (A-)': {
+        canDonateTo: ['A Rh+ (A+)', 'A Rh- (A-)', 'AB Rh+ (AB+)', 'AB Rh- (AB-)'],
+        canReceiveFrom: ['A Rh- (A-)', 'O Rh- (O-)'],
+      },
+      'B Rh+ (B+)': {
+        canDonateTo: ['B Rh+ (B+)', 'AB Rh+ (AB+)'],
+        canReceiveFrom: ['B Rh+ (B+)', 'B Rh- (B-)', 'O Rh+ (O+)', 'O Rh- (O-)'],
+      },
+      'B Rh- (B-)': {
+        canDonateTo: ['B Rh+ (B+)', 'B Rh- (B-)', 'AB Rh+ (AB+)', 'AB Rh- (AB-)'],
+        canReceiveFrom: ['B Rh- (B-)', 'O Rh- (O-)'],
+      },
+      'AB Rh+ (AB+)': {
+        canDonateTo: ['AB Rh+ (AB+)'],
+        canReceiveFrom: ['A Rh+ (A+)', 'A Rh- (A-)', 'B Rh+ (B+)', 'B Rh- (B-)', 'AB Rh+ (AB+)', 'AB Rh- (AB-)', 'O Rh+ (O+)', 'O Rh- (O-)'],
+      },
+      'AB Rh- (AB-)': {
+        canDonateTo: ['AB Rh+ (AB+)', 'AB Rh- (AB-)'],
+        canReceiveFrom: ['A Rh- (A-)', 'B Rh- (B-)', 'AB Rh- (AB-)', 'O Rh- (O-)'],
+      },
+      'O Rh+ (O+)': {
+        canDonateTo: ['A Rh+ (A+)', 'B Rh+ (B+)', 'AB Rh+ (AB+)', 'O Rh+ (O+)'],
+        canReceiveFrom: ['O Rh+ (O+)', 'O Rh- (O-)'],
+      },
+      'O Rh- (O-)': {
+        canDonateTo: ['A Rh+ (A+)', 'A Rh- (A-)', 'B Rh+ (B+)', 'B Rh- (B-)', 'AB Rh+ (AB+)', 'AB Rh- (AB-)', 'O Rh+ (O+)', 'O Rh- (O-)'],
+        canReceiveFrom: ['O Rh- (O-)'],
+      },
+    };
+
+    const info = bloodCompatibilityMap[selectedBloodType];
+    return info ? {
+      canDonateTo: info.canDonateTo.join(', '),
+      canReceiveFrom: info.canReceiveFrom.join(', ')
+    } : {
+      canDonateTo: 'Unknown',
+      canReceiveFrom: 'Unknown'
+    };
+  };
 
   const handleCreateRequest = async () => {
     setIsLoading(true);
@@ -94,9 +140,6 @@ const AiBloodMatchingSystem = ({ selectedRequest, isHospital = true }: AiBloodMa
       // Update requests list and set active request
       setRequests(prev => [newRequest, ...prev]);
       setActiveRequest(newRequest);
-
-      // Clear form
-      setSpecialRequirements('');
     } catch (error) {
       console.error('Error creating blood request:', error);
       toast({
@@ -124,6 +167,9 @@ const AiBloodMatchingSystem = ({ selectedRequest, isHospital = true }: AiBloodMa
       contactDonor(donorId, activeRequest.id);
     }
   };
+
+  // Get blood compatibility info for the current blood type
+  const bloodCompatibilityInfo = getBloodCompatibilityInfo(bloodType);
 
   return (
     <div className="grid md:grid-cols-2 gap-6">
@@ -173,7 +219,6 @@ const AiBloodMatchingSystem = ({ selectedRequest, isHospital = true }: AiBloodMa
                 <Input 
                   type="number" 
                   min="1" 
-                  defaultValue={2} 
                   value={units}
                   onChange={(e) => setUnits(Number(e.target.value))}
                   disabled={isLoading}
@@ -190,18 +235,17 @@ const AiBloodMatchingSystem = ({ selectedRequest, isHospital = true }: AiBloodMa
                 />
               </div>
               
-              <div>
-                <label className="text-sm font-medium mb-1 block">Special Requirements (optional)</label>
-                <Input 
-                  placeholder="E.g., pediatric, leukoreduced, etc." 
-                  value={specialRequirements}
-                  onChange={(e) => setSpecialRequirements(e.target.value)}
-                  disabled={isLoading}
-                />
+              {/* Blood compatibility info box */}
+              <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <h3 className="font-medium mb-1 text-sm">Blood Type Compatibility</h3>
+                <div className="text-xs space-y-1">
+                  <p><strong>Can donate to:</strong> {bloodCompatibilityInfo.canDonateTo}</p>
+                  <p><strong>Can receive from:</strong> {bloodCompatibilityInfo.canReceiveFrom}</p>
+                </div>
               </div>
               
               <div className="flex items-center pt-2">
-                <input type="checkbox" id="ai-match" className="mr-2" />
+                <input type="checkbox" id="ai-match" className="mr-2" defaultChecked />
                 <label htmlFor="ai-match" className="text-sm">Use AI to find the best genetic matches</label>
               </div>
               
@@ -312,7 +356,6 @@ const AiBloodMatchingSystem = ({ selectedRequest, isHospital = true }: AiBloodMa
                       </span>
                     </div>
                     <Slider 
-                      defaultValue={[75]} 
                       max={100} 
                       step={1} 
                       value={distancePriority}
@@ -321,14 +364,13 @@ const AiBloodMatchingSystem = ({ selectedRequest, isHospital = true }: AiBloodMa
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm">Genetic Match Priority</span>
+                      <span className="text-sm">Blood Type Compatibility</span>
                       <span className="text-xs text-gray-500">
                         {geneticPriority[0] <= 33 ? 'Low' : 
                          geneticPriority[0] <= 66 ? 'Medium' : 'High'}
                       </span>
                     </div>
                     <Slider 
-                      defaultValue={[50]} 
                       max={100} 
                       step={1}
                       value={geneticPriority}
@@ -344,7 +386,6 @@ const AiBloodMatchingSystem = ({ selectedRequest, isHospital = true }: AiBloodMa
                       </span>
                     </div>
                     <Slider 
-                      defaultValue={[50]} 
                       max={100} 
                       step={1}
                       value={qualityPriority}
@@ -508,16 +549,12 @@ const AiBloodMatchingSystem = ({ selectedRequest, isHospital = true }: AiBloodMa
                 <Brain className="h-10 w-10 text-purple-600 mx-auto mb-2" />
                 <h3 className="font-medium text-lg mb-2">BloodBank AI Match Analysis</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Our AI has analyzed your profile and found you to be a <span className="font-semibold text-purple-600">97% match</span> for this blood request.
+                  Our AI has analyzed your blood type and found you to be a <span className="font-semibold text-purple-600">97% match</span> for this blood request.
                 </p>
                 <div className="space-y-2 text-left mb-4 text-sm">
                   <div className="flex justify-between">
                     <span>Blood Type Compatibility:</span>
                     <span className="font-medium text-green-600">Perfect Match</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Genetic Compatibility:</span>
-                    <span className="font-medium text-green-600">High (95%)</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Distance Factor:</span>

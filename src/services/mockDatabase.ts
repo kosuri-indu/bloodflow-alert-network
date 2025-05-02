@@ -1,4 +1,3 @@
-
 // Mock database service to simulate backend functionality
 // This would be replaced with actual Supabase calls in production
 
@@ -329,6 +328,12 @@ const mockNearbyBloodBanks = [
   },
 ];
 
+// Updated interface for registerForEvent function response
+interface RegisterEventResponse {
+  success: boolean;
+  message?: string; // Add message property
+}
+
 // Mock Database Services
 export const mockDatabaseService = {
   // Get blood inventory
@@ -374,13 +379,20 @@ export const mockDatabaseService = {
   },
   
   // Register for event
-  registerForEvent: (eventId: string, donorId: string) => {
-    const event = mockDonationEvents.find(e => e.id === eventId);
-    if (event && event.registeredDonors < event.slots) {
-      event.registeredDonors += 1;
-      return Promise.resolve({ success: true });
+  registerForEvent: async (eventId: string, userId: string): Promise<RegisterEventResponse> => {
+    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
+    
+    // Success 80% of the time
+    if (Math.random() > 0.2) {
+      return { 
+        success: true 
+      };
+    } else {
+      return { 
+        success: false, 
+        message: "Registration failed. Please try again later." 
+      };
     }
-    return Promise.resolve({ success: false, error: 'Event is full or not found' });
   },
   
   // Get donor profile

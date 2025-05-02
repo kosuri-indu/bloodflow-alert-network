@@ -1,71 +1,67 @@
-
-import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { CalendarIcon, MapPinIcon, UserIcon } from "lucide-react";
-import { DonationEvent } from '@/services/mockDatabase';
-import mockDatabaseService from '@/services/mockDatabase';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '../context/AuthContext';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Calendar, MapPin, Users } from "lucide-react";
+import mockDatabaseService, { DonationEvent } from "@/services/mockDatabase";
+import { useToast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { useAuth } from "../context/AuthContext";
+import { format } from "date-fns";
 
 const EventsPage = () => {
   const [events, setEvents] = useState<DonationEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [registering, setRegistering] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const { isAuthenticated, currentUser } = useAuth();
+  const { currentUser, isAuthenticated } = useAuth();
 
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        const eventData = await mockDatabaseService.getDonationEvents();
-        setEvents(eventData);
+        const eventsData = await mockDatabaseService.getDonationEvents();
+        setEvents(eventsData);
       } catch (error) {
         console.error("Error fetching events:", error);
         toast({
           title: "Error",
-          description: "Failed to fetch donation events.",
+          description: "Failed to load blood donation events.",
           variant: "destructive",
         });
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
     fetchEvents();
   }, [toast]);
 
-  const handleRegister = async (eventId: string) => {
+  const handleRegisterForEvent = async (eventId: string) => {
     if (!isAuthenticated) {
       toast({
         title: "Login Required",
-        description: "Please login as a donor to register for this event.",
-        variant: "destructive",
+        description: "Please login to register for this event.",
       });
       return;
     }
 
-    setRegistering(eventId);
     try {
       const result = await mockDatabaseService.registerForEvent(eventId, currentUser?.id || '');
       
       if (result.success) {
-        // Update the UI
-        setEvents(prev => prev.map(event => 
-          event.id === eventId 
-            ? { ...event, registeredDonors: event.registeredDonors + 1 } 
-            : event
-        ));
-        
         toast({
           title: "Registration Successful",
-          description: "You have successfully registered for this blood donation event.",
+          description: "You have successfully registered for this event.",
         });
+        
+        // Update events with the new registration count
+        setEvents(prev => prev.map(event => 
+          event.id === eventId ? {...event, registeredDonors: event.registeredDonors + 1} : event
+        ));
       } else {
         toast({
           title: "Registration Failed",
-          description: result.error || "This event may be full or no longer available.",
+          description: result.message || "Unable to register for this event.",
           variant: "destructive",
         });
       }
@@ -73,65 +69,56 @@ const EventsPage = () => {
       console.error("Error registering for event:", error);
       toast({
         title: "Registration Error",
-        description: "An unexpected error occurred during registration.",
+        description: "An unexpected error occurred.",
         variant: "destructive",
       });
-    } finally {
-      setRegistering(null);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-red-600 mb-4">Blood Donation Events</h1>
-          <p className="text-gray-600">Join upcoming blood donation drives in your area</p>
+    <div className="min-h-screen bg-gray-50 py-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-6">
+          <h2 className="text-3xl font-bold text-red-600">Blood Donation Events</h2>
+          <p className="text-gray-500 mt-2">Find upcoming blood donation events near you and register to save lives.</p>
         </div>
 
-        {isLoading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading events...</p>
+        <Separator className="mb-4" />
+
+        {loading ? (
+          <div className="text-center py-10">
+            Loading events...
           </div>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {events.map((event) => (
-              <Card key={event.id} className="p-6 hover:shadow-lg transition-shadow">
-                <h2 className="text-xl font-semibold mb-3">{event.title}</h2>
-                <div className="space-y-3 text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <CalendarIcon className="w-5 h-5 text-red-500" />
-                    <span>{format(new Date(event.date), 'PPP')}</span>
+              <Card key={event.id}>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold">{event.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  <div className="flex items-center text-gray-600">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    <span>{format(new Date(event.date), 'MMMM d, yyyy')}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <MapPinIcon className="w-5 h-5 text-red-500" />
+                  <div className="flex items-center text-gray-600">
+                    <MapPin className="h-4 w-4 mr-2" />
                     <span>{event.location}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <UserIcon className="w-5 h-5 text-red-500" />
+                  <div className="flex items-center text-gray-600">
+                    <Users className="h-4 w-4 mr-2" />
                     <span>{event.registeredDonors} / {event.slots} slots filled</span>
                   </div>
-                  <p>{event.description}</p>
-                  <div className="mt-4">
-                    <Button 
-                      className="w-full bg-red-600 hover:bg-red-700" 
-                      onClick={() => handleRegister(event.id)}
-                      disabled={registering === event.id || event.registeredDonors >= event.slots}
-                    >
-                      {registering === event.id ? (
-                        <span className="flex items-center">
-                          <span className="animate-spin mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full"></span>
-                          Registering...
-                        </span>
-                      ) : event.registeredDonors >= event.slots ? (
-                        "Event Full"
-                      ) : (
-                        "Register for Event"
-                      )}
-                    </Button>
-                  </div>
-                </div>
+                  <p className="text-sm text-gray-700">{event.description}</p>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    className="w-full bg-red-600 hover:bg-red-700"
+                    onClick={() => handleRegisterForEvent(event.id)}
+                  >
+                    Register
+                  </Button>
+                </CardFooter>
               </Card>
             ))}
           </div>

@@ -124,7 +124,7 @@ const DashboardPage = () => {
       } else {
         toast({
           title: "Registration Failed",
-          description: result.error || "This event may be full.",
+          description: result.message || "This event may be full.", // Changed from .error to .message
           variant: "destructive",
         });
       }

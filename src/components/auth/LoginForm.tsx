@@ -6,12 +6,19 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { DropletIcon } from "lucide-react";
+import { DropletIcon, Loader2 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import useAuthForm from "../../hooks/useAuthForm";
 
 const LoginForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { isLoading, handleSubmit } = useAuthForm({
+    type: 'login',
+    userType: 'donor',
+  });
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -42,18 +49,12 @@ const LoginForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
     
-    // TODO: Implement actual login logic when backend is ready
-    console.log('Donor login attempt:', formData);
-    toast({
-      title: "Login Successful",
-      description: "Welcome back to BloodBankAI!",
-      duration: 3000,
-    });
-    navigate('/dashboard');
+    // Pass email, password to handleSubmit from useAuthForm
+    await handleSubmit(formData.email, formData.password);
   };
 
   return (
@@ -66,7 +67,7 @@ const LoginForm = () => {
         <p className="text-gray-600">Access your BloodBankAI account</p>
       </div>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -100,8 +101,19 @@ const LoginForm = () => {
           </div>
         </div>
         
-        <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">
-          Login
+        <Button 
+          type="submit" 
+          className="w-full bg-red-600 hover:bg-red-700"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+              Logging in...
+            </>
+          ) : (
+            'Login'
+          )}
         </Button>
       </form>
     </Card>

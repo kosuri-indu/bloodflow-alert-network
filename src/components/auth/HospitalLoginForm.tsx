@@ -6,13 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Hospital, AlertCircle } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Hospital, AlertCircle, Loader2 } from "lucide-react";
+import useAuthForm from "../../hooks/useAuthForm";
 
 const HospitalLoginForm = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { isLoading, handleSubmit } = useAuthForm({
+    type: 'login',
+    userType: 'hospital',
+  });
   
   // Show welcome message for newly registered hospitals
   useEffect(() => {
@@ -46,31 +50,12 @@ const HospitalLoginForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
     
-    // TODO: Implement actual login logic when backend is ready
-    // For demo purposes, let's simulate verification check
-    const isVerified = Math.random() > 0.3; // 70% chance of being verified
-    
-    console.log('Hospital login attempt:', formData);
-    
-    if (isVerified) {
-      toast({
-        title: "Login Successful",
-        description: "Welcome to your BloodBankAI Hospital Dashboard",
-        duration: 3000,
-      });
-      navigate('/dashboard');
-    } else {
-      toast({
-        title: "Account Not Verified",
-        description: "Your hospital account is still pending verification. Please check back later.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    }
+    // Handle hospital login with the extra hospitalId field
+    await handleSubmit(formData.email, formData.password, { hospitalId: formData.hospitalId });
   };
 
   return (
@@ -96,7 +81,7 @@ const HospitalLoginForm = () => {
         </div>
       </div>
       
-      <form onSubmit={handleLogin} className="space-y-4">
+      <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -139,8 +124,19 @@ const HospitalLoginForm = () => {
           <p className="text-xs text-gray-500">Your Hospital ID was provided during registration verification</p>
         </div>
         
-        <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">
-          Login
+        <Button 
+          type="submit" 
+          className="w-full bg-red-600 hover:bg-red-700" 
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+              Logging in...
+            </>
+          ) : (
+            'Login'
+          )}
         </Button>
         
         <div className="text-center">

@@ -1,17 +1,19 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
-import { DropletIcon } from "lucide-react";
+import { DropletIcon, Loader2 } from "lucide-react";
+import useAuthForm from "../../hooks/useAuthForm";
 
 const RegisterForm = () => {
-  const navigate = useNavigate();
-  const { toast } = useToast();
+  const { isLoading, handleSubmit } = useAuthForm({
+    type: 'register',
+    userType: 'donor',
+  });
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -40,18 +42,12 @@ const RegisterForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
     
-    // TODO: Implement actual registration logic when backend is ready
-    console.log('Donor registration attempt:', formData);
-    toast({
-      title: "Registration Successful",
-      description: "Your account has been created. You can now log in.",
-      duration: 5000,
-    });
-    navigate('/login', { state: { showMessage: 'donor-registered' } });
+    // Connect to AuthContext
+    await handleSubmit(formData);
   };
 
   return (
@@ -64,7 +60,7 @@ const RegisterForm = () => {
         <p className="text-gray-600">Join the BloodBankAI donation community</p>
       </div>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="name">Full Name</Label>
           <Input
@@ -138,8 +134,19 @@ const RegisterForm = () => {
           {errors.bloodType && <p className="text-xs text-red-500">{errors.bloodType}</p>}
         </div>
 
-        <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">
-          Register
+        <Button 
+          type="submit" 
+          className="w-full bg-red-600 hover:bg-red-700"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+              Registering...
+            </>
+          ) : (
+            'Register'
+          )}
         </Button>
       </form>
     </Card>

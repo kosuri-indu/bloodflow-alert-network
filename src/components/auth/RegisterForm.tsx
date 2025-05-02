@@ -46,8 +46,8 @@ const RegisterForm = () => {
     e.preventDefault();
     if (!validateForm()) return;
     
-    // Connect to AuthContext
-    await handleSubmit(formData);
+    // Fix: Pass email and password as separate arguments, followed by formData
+    await handleSubmit(formData.email, formData.password, formData);
   };
 
   return (

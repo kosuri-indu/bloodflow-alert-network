@@ -9,8 +9,6 @@ import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
-import EventsPage from "./pages/EventsPage";
-import DonatePage from "./pages/DonatePage";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -26,9 +24,10 @@ const queryClient = new QueryClient({
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userType } = useAuth();
   
-  if (!isAuthenticated) {
+  // Only hospitals are allowed to access protected routes
+  if (!isAuthenticated || userType !== 'hospital') {
     return <Navigate to="/login" />;
   }
   
@@ -50,8 +49,6 @@ const AppRoutes = () => (
               <DashboardPage />
             </ProtectedRoute>
           } />
-          <Route path="/events" element={<EventsPage />} />
-          <Route path="/donate" element={<DonatePage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

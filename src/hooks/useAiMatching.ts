@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import mockDatabaseService, { AiMatch, BloodRequest } from '@/services/mockDatabase';
@@ -56,10 +57,13 @@ export function useAiMatching() {
       // Simulate AI processing
       const result = await mockDatabaseService.processAiMatching(request.id);
       
-      if (result.success) {
+      // TypeScript fix: Check if result exists and has expected structure
+      const processedResult = result as { success: boolean; matches?: AiMatch[]; requestBloodType?: string; error?: string };
+      
+      if (processedResult.success && processedResult.matches && processedResult.requestBloodType) {
         // Calculate final scores based on blood type compatibility
-        const enhancedMatches = result.matches.map((match: AiMatch) => {
-          const compatibilityScore = calculateBloodCompatibilityScore(match.bloodType, result.requestBloodType);
+        const enhancedMatches = processedResult.matches.map((match: AiMatch) => {
+          const compatibilityScore = calculateBloodCompatibilityScore(match.bloodType, processedResult.requestBloodType as string);
           
           // If blood types are completely incompatible, filter them out
           if (compatibilityScore === 0) return null;
@@ -75,7 +79,7 @@ export function useAiMatching() {
             matchScore: finalScore,
             compatibilityScore
           };
-        }).filter(Boolean);
+        }).filter(Boolean) as AiMatch[];
         
         // Sort by match score (highest first)
         const sortedMatches = enhancedMatches.sort((a, b) => b.matchScore - a.matchScore);
@@ -83,12 +87,12 @@ export function useAiMatching() {
         setMatches(sortedMatches);
         toast({
           title: "AI Matching Complete",
-          description: `Found ${sortedMatches.length} potential donors for this request.`,
+          description: `Found ${sortedMatches.length} potential hospital matches for this request.`,
         });
       } else {
         toast({
           title: "AI Matching Failed",
-          description: result.error || "Failed to process AI matching.",
+          description: processedResult.error || "Failed to process AI matching.",
           variant: "destructive",
         });
       }
@@ -108,7 +112,9 @@ export function useAiMatching() {
     try {
       const result = await mockDatabaseService.contactDonor(donorId, requestId);
       
-      if (result.success) {
+      const processedResult = result as { success: boolean; error?: string };
+      
+      if (processedResult.success) {
         // Update local matches state
         setMatches(prev => prev.map(match => 
           match.donorId === donorId && match.requestId === requestId 
@@ -118,20 +124,20 @@ export function useAiMatching() {
         
         toast({
           title: "Contact Request Sent",
-          description: "The donor has been notified about this blood request.",
+          description: "The hospital has been notified about this blood request.",
         });
       } else {
         toast({
           title: "Contact Failed",
-          description: "Failed to contact the donor. Please try again.",
+          description: "Failed to contact the hospital. Please try again.",
           variant: "destructive",
         });
       }
     } catch (error) {
-      console.error("Error contacting donor:", error);
+      console.error("Error contacting hospital:", error);
       toast({
         title: "Contact Error",
-        description: "An unexpected error occurred when trying to contact the donor.",
+        description: "An unexpected error occurred when trying to contact the hospital.",
         variant: "destructive",
       });
     }

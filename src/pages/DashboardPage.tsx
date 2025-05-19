@@ -101,8 +101,12 @@ const DashboardPage = () => {
                     <Brain className="h-6 w-6 text-purple-600" />
                   </div>
                   <p className="text-sm text-gray-500">AI Matches</p>
+                  {/* Fix: Using matchPercentage instead of matchCount since matchCount doesn't exist in the BloodRequest type */}
                   <p className="text-2xl font-bold">
-                    {bloodRequests.reduce((total, req) => total + (req.matchCount || 0), 0)}
+                    {bloodRequests.reduce((total, req) => {
+                      // If matchPercentage is over 70%, consider it a match
+                      return req.matchPercentage > 70 ? total + 1 : total;
+                    }, 0)}
                   </p>
                 </CardContent>
               </Card>
@@ -228,9 +232,10 @@ const DashboardPage = () => {
                               <div className="flex items-center mt-1 text-sm text-green-600">
                                 <Hospital className="h-4 w-4 mr-1" />
                                 <span>
-                                  {request.urgency === 'critical' ? '2 hospitals matched' :
-                                   request.urgency === 'urgent' ? '1 hospital matched' :
-                                   '4 hospitals matched'}
+                                  {request.matchPercentage > 90 ? '3+ hospitals matched' :
+                                   request.matchPercentage > 80 ? '2 hospitals matched' :
+                                   request.matchPercentage > 70 ? '1 hospital matched' :
+                                   'Looking for matches...'}
                                 </span>
                               </div>
                             </div>

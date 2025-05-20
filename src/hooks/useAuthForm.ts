@@ -34,9 +34,14 @@ export default function useAuthForm({ type, userType }: UseAuthFormOptions) {
     }
   };
   
-  const handleRegister = async (userData: any) => {
+  const handleRegister = async (email: string, password: string, userData: any) => {
     setIsLoading(true);
     try {
+      // Make sure userData has all the required properties
+      if (!userData.hospitalName) {
+        throw new Error('Hospital name is required');
+      }
+      
       const success = await register(userData, userType);
       if (success) {
         navigate('/register', { state: { showMessage: `hospital-registered` } });

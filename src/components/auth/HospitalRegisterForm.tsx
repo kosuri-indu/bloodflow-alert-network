@@ -53,8 +53,19 @@ const HospitalRegisterForm = () => {
     e.preventDefault();
     if (!validateForm()) return;
     
-    // Fix: Pass email and password as separate arguments, followed by formData
-    await handleSubmit(formData.email, formData.password, formData);
+    // Create a properly formatted userData object that matches what the register function expects
+    const userData = {
+      hospitalName: formData.hospitalName,
+      email: formData.email,
+      password: formData.password,
+      contactPerson: formData.contactPerson,
+      phoneNumber: formData.phoneNumber,
+      registrationNumber: formData.registrationNumber,
+      address: formData.address
+    };
+    
+    // Call handleRegister directly with the userData object
+    await handleSubmit(formData.email, formData.password, userData);
   };
 
   return (

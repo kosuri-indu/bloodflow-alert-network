@@ -1,488 +1,488 @@
 
-import { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Slider } from "@/components/ui/slider";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Brain, AlertCircle, Hospital, MapPin, Clock, Filter, DropletIcon } from "lucide-react";
-import { useToast } from '@/components/ui/use-toast';
-import { Input } from '@/components/ui/input';
-import { BloodRequest, AiMatch } from '@/services/mockDatabase';
-import mockDatabaseService from '@/services/mockDatabase';
-import useAiMatching from '@/hooks/useAiMatching';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Brain, Hospital, DropletIcon, AlertCircle, Clock, CheckCircle, BadgeCheck, MapPin, ArrowRight } from 'lucide-react';
+import { useToast } from "@/components/ui/use-toast";
+import { Progress } from "@/components/ui/progress";
+import mockDatabaseService, { BloodRequest, AiMatch } from "@/services/mockDatabase";
+import useAiMatching from "@/hooks/useAiMatching";
+import { Badge } from "@/components/ui/badge";
 
-interface AiBloodMatchingSystemProps {
-  selectedRequest?: BloodRequest;
-}
+// Blood types available
+const bloodTypes = [
+  { value: "A Rh+ (A+)", label: "A Positive (A+)" },
+  { value: "A Rh- (A-)", label: "A Negative (A-)" },
+  { value: "B Rh+ (B+)", label: "B Positive (B+)" },
+  { value: "B Rh- (B-)", label: "B Negative (B-)" },
+  { value: "AB Rh+ (AB+)", label: "AB Positive (AB+)" },
+  { value: "AB Rh- (AB-)", label: "AB Negative (AB-)" },
+  { value: "O Rh+ (O+)", label: "O Positive (O+)" },
+  { value: "O Rh- (O-)", label: "O Negative (O-)" }
+];
 
-const AiBloodMatchingSystem = ({ selectedRequest }: AiBloodMatchingSystemProps) => {
-  const [bloodType, setBloodType] = useState<string>('O Rh+ (O+)');
-  const [urgency, setUrgency] = useState<'standard' | 'urgent' | 'critical'>('urgent');
-  const [units, setUnits] = useState<number>(2);
-  const [requiredBy, setRequiredBy] = useState<string>('');
-  const [requests, setRequests] = useState<BloodRequest[]>([]);
-  const [activeRequest, setActiveRequest] = useState<BloodRequest | undefined>(selectedRequest);
-  const [isLoading, setIsLoading] = useState(false);
+// Special requirement options
+const specialRequirements = [
+  { id: "irradiated", label: "Irradiated" },
+  { id: "leukoreduced", label: "Leukoreduced" },
+  { id: "cmv-negative", label: "CMV Negative" },
+  { id: "washed", label: "Washed" }
+];
+
+const AiBloodMatchingSystem = () => {
   const { toast } = useToast();
   const { isProcessing, matches, runAiMatching, contactDonor } = useAiMatching();
-
-  // AI Parameters
-  const [distancePriority, setDistancePriority] = useState([75]);
-  const [geneticPriority, setGeneticPriority] = useState([90]); // Increased emphasis on genetic/blood type
-  const [qualityPriority, setQualityPriority] = useState([50]);
-
-  useEffect(() => {
-    const fetchRequests = async () => {
-      try {
-        const data = await mockDatabaseService.getBloodRequests();
-        setRequests(data);
-        if (!selectedRequest && data.length > 0) {
-          setActiveRequest(data[0]);
-        }
-      } catch (error) {
-        console.error('Error fetching blood requests:', error);
-      }
-    };
-
-    fetchRequests();
-  }, [selectedRequest]);
-
-  useEffect(() => {
-    if (activeRequest) {
-      runAiMatching(activeRequest);
+  
+  const [activeTab, setActiveTab] = useState('create-request');
+  const [isLoadingMatches, setIsLoadingMatches] = useState(false);
+  
+  // Form state
+  const [requestForm, setRequestForm] = useState({
+    bloodType: "",
+    units: 1,
+    urgency: "standard",
+    patientAge: "",
+    patientWeight: "",
+    medicalCondition: "",
+    neededBy: "",
+    specialRequirements: [] as string[]
+  });
+  
+  // Validation
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  
+  // Handle checkbox changes for special requirements
+  const handleSpecialRequirementsChange = (requirementId: string, checked: boolean) => {
+    if (checked) {
+      setRequestForm({
+        ...requestForm,
+        specialRequirements: [...requestForm.specialRequirements, requirementId]
+      });
+    } else {
+      setRequestForm({
+        ...requestForm,
+        specialRequirements: requestForm.specialRequirements.filter(id => id !== requirementId)
+      });
     }
-  }, [activeRequest]);
-
-  // Blood compatibility explanation based on selected blood type
-  const getBloodCompatibilityInfo = (selectedBloodType: string) => {
-    const bloodCompatibilityMap: Record<string, { canDonateTo: string[], canReceiveFrom: string[] }> = {
-      'A Rh+ (A+)': {
-        canDonateTo: ['A Rh+ (A+)', 'AB Rh+ (AB+)'],
-        canReceiveFrom: ['A Rh+ (A+)', 'A Rh- (A-)', 'O Rh+ (O+)', 'O Rh- (O-)'],
-      },
-      'A Rh- (A-)': {
-        canDonateTo: ['A Rh+ (A+)', 'A Rh- (A-)', 'AB Rh+ (AB+)', 'AB Rh- (AB-)'],
-        canReceiveFrom: ['A Rh- (A-)', 'O Rh- (O-)'],
-      },
-      'B Rh+ (B+)': {
-        canDonateTo: ['B Rh+ (B+)', 'AB Rh+ (AB+)'],
-        canReceiveFrom: ['B Rh+ (B+)', 'B Rh- (B-)', 'O Rh+ (O+)', 'O Rh- (O-)'],
-      },
-      'B Rh- (B-)': {
-        canDonateTo: ['B Rh+ (B+)', 'B Rh- (B-)', 'AB Rh+ (AB+)', 'AB Rh- (AB-)'],
-        canReceiveFrom: ['B Rh- (B-)', 'O Rh- (O-)'],
-      },
-      'AB Rh+ (AB+)': {
-        canDonateTo: ['AB Rh+ (AB+)'],
-        canReceiveFrom: ['A Rh+ (A+)', 'A Rh- (A-)', 'B Rh+ (B+)', 'B Rh- (B-)', 'AB Rh+ (AB+)', 'AB Rh- (AB-)', 'O Rh+ (O+)', 'O Rh- (O-)'],
-      },
-      'AB Rh- (AB-)': {
-        canDonateTo: ['AB Rh+ (AB+)', 'AB Rh- (AB-)'],
-        canReceiveFrom: ['A Rh- (A-)', 'B Rh- (B-)', 'AB Rh- (AB-)', 'O Rh- (O-)'],
-      },
-      'O Rh+ (O+)': {
-        canDonateTo: ['A Rh+ (A+)', 'B Rh+ (B+)', 'AB Rh+ (AB+)', 'O Rh+ (O+)'],
-        canReceiveFrom: ['O Rh+ (O+)', 'O Rh- (O-)'],
-      },
-      'O Rh- (O-)': {
-        canDonateTo: ['A Rh+ (A+)', 'A Rh- (A-)', 'B Rh+ (B+)', 'B Rh- (B-)', 'AB Rh+ (AB+)', 'AB Rh- (AB-)', 'O Rh+ (O+)', 'O Rh- (O-)'],
-        canReceiveFrom: ['O Rh- (O-)'],
-      },
-    };
-
-    const info = bloodCompatibilityMap[selectedBloodType];
-    return info ? {
-      canDonateTo: info.canDonateTo.join(', '),
-      canReceiveFrom: info.canReceiveFrom.join(', ')
-    } : {
-      canDonateTo: 'Unknown',
-      canReceiveFrom: 'Unknown'
-    };
   };
-
-  const handleCreateRequest = async () => {
-    setIsLoading(true);
-
+  
+  // Validate form before submission
+  const validateForm = () => {
+    const newErrors: {[key: string]: string} = {};
+    
+    if (!requestForm.bloodType) newErrors.bloodType = "Blood type is required";
+    if (!requestForm.units || requestForm.units < 1) newErrors.units = "At least 1 unit is required";
+    if (!requestForm.urgency) newErrors.urgency = "Urgency level is required";
+    if (!requestForm.neededBy) newErrors.neededBy = "Needed by date is required";
+    
+    // Optional validations
+    if (requestForm.patientAge && (isNaN(Number(requestForm.patientAge)) || Number(requestForm.patientAge) < 0)) {
+      newErrors.patientAge = "Age must be a positive number";
+    }
+    
+    if (requestForm.patientWeight && (isNaN(Number(requestForm.patientWeight)) || Number(requestForm.patientWeight) < 0)) {
+      newErrors.patientWeight = "Weight must be a positive number";
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+  
+  // Handle request creation
+  const handleCreateRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
     try {
-      // Get time needed based on urgency
-      let timeNeeded = '';
-      let neededByDate = new Date();
+      const today = new Date();
+      const neededByDate = new Date(requestForm.neededBy);
       
-      if (urgency === 'critical') {
-        timeNeeded = 'Needed within 24 hours';
-        neededByDate.setDate(neededByDate.getDate() + 1);
-      } else if (urgency === 'urgent') {
-        timeNeeded = 'Needed within 48 hours';
-        neededByDate.setDate(neededByDate.getDate() + 2);
-      } else {
-        timeNeeded = 'Needed within 3 days';
-        neededByDate.setDate(neededByDate.getDate() + 3);
-      }
-
-      const newRequest = await mockDatabaseService.createBloodRequest({
-        bloodType,
-        hospital: 'City General Hospital',
-        urgency,
-        distance: 0, // Not applicable for own hospital
-        timeNeeded,
+      // Format the request data
+      const newRequest: Partial<BloodRequest> = {
+        bloodType: requestForm.bloodType,
+        hospital: "City General Hospital", // Would come from user context
+        urgency: requestForm.urgency as 'critical' | 'urgent' | 'standard',
+        distance: 0, // Not applicable for outgoing requests
+        timeNeeded: `Needed by ${neededByDate.toLocaleDateString()}`,
         status: 'pending',
-        units,
-        neededBy: requiredBy ? new Date(requiredBy) : neededByDate,
-      });
-
+        units: Number(requestForm.units),
+        neededBy: neededByDate,
+        patientAge: requestForm.patientAge ? Number(requestForm.patientAge) : undefined,
+        patientWeight: requestForm.patientWeight ? Number(requestForm.patientWeight) : undefined,
+        medicalCondition: requestForm.medicalCondition || undefined,
+        specialRequirements: requestForm.specialRequirements.length > 0 ? requestForm.specialRequirements : undefined
+      };
+      
+      const createdRequest = await mockDatabaseService.createBloodRequest(newRequest as any);
+      
       toast({
-        title: 'Request Created',
-        description: `Blood request for ${bloodType} has been created.`,
+        title: "Request Created",
+        description: "Your blood request has been created successfully. Running AI matching...",
       });
-
-      // Update requests list and set active request
-      setRequests(prev => [newRequest, ...prev]);
-      setActiveRequest(newRequest);
+      
+      // Run AI matching for the new request
+      setIsLoadingMatches(true);
+      await runAiMatching(createdRequest);
+      setIsLoadingMatches(false);
+      
+      // Switch to the matching results tab
+      setActiveTab('matching-results');
+      
     } catch (error) {
-      console.error('Error creating blood request:', error);
+      console.error("Error creating request:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to create blood request.',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to create blood request. Please try again.",
+        variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   };
-
-  const handleApplyAiParameters = () => {
-    if (activeRequest) {
+  
+  // Handle contact hospital
+  const handleContactHospital = async (match: AiMatch) => {
+    try {
+      await contactDonor(match.donorId, match.requestId);
+      
       toast({
-        title: 'AI Parameters Applied',
-        description: 'Reprocessing blood matching with updated parameters.',
+        title: "Hospital Contacted",
+        description: `${match.hospitalName} has been notified about your blood request.`,
       });
-      runAiMatching(activeRequest);
+    } catch (error) {
+      console.error("Error contacting hospital:", error);
+      toast({
+        title: "Contact Failed",
+        description: "Failed to contact the hospital. Please try again.",
+        variant: "destructive",
+      });
     }
   };
-
-  const handleContactDonor = (donorId: string) => {
-    if (activeRequest) {
-      contactDonor(donorId, activeRequest.id);
-    }
+  
+  // Format compatibility score for display
+  const formatCompatibilityDisplay = (score: number) => {
+    if (score >= 95) return "Universal Donor";
+    if (score === 100) return "Perfect Match";
+    if (score >= 90) return "Compatible";
+    if (score >= 80) return "Compatible (Emergency Only)";
+    if (score > 0) return "Marginally Compatible";
+    return "Not Compatible";
   };
-
-  // Get blood compatibility info for the current blood type
-  const bloodCompatibilityInfo = getBloodCompatibilityInfo(bloodType);
 
   return (
-    <div className="grid md:grid-cols-2 gap-6">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-xl">Create Blood Request</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Blood Type</label>
-                <select 
-                  className="w-full p-2 border rounded-md"
-                  value={bloodType}
-                  onChange={(e) => setBloodType(e.target.value)}
-                  disabled={isLoading}
-                >
-                  <option value="A Rh+ (A+)">A Rh+ (A+)</option>
-                  <option value="A Rh- (A-)">A Rh- (A-)</option>
-                  <option value="B Rh+ (B+)">B Rh+ (B+)</option>
-                  <option value="B Rh- (B-)">B Rh- (B-)</option>
-                  <option value="AB Rh+ (AB+)">AB Rh+ (AB+)</option>
-                  <option value="AB Rh- (AB-)">AB Rh- (AB-)</option>
-                  <option value="O Rh+ (O+)">O Rh+ (O+)</option>
-                  <option value="O Rh- (O-)">O Rh- (O-)</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Urgency</label>
-                <select 
-                  className="w-full p-2 border rounded-md"
-                  value={urgency}
-                  onChange={(e) => setUrgency(e.target.value as any)}
-                  disabled={isLoading}
-                >
-                  <option value="standard">Standard</option>
-                  <option value="urgent">Urgent</option>
-                  <option value="critical">Critical</option>
-                </select>
-              </div>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-1 block">Units Required</label>
-              <Input 
-                type="number" 
-                min="1" 
-                value={units}
-                onChange={(e) => setUnits(Number(e.target.value))}
-                disabled={isLoading}
-              />
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium mb-1 block">Required By</label>
-              <Input 
-                type="datetime-local" 
-                value={requiredBy}
-                onChange={(e) => setRequiredBy(e.target.value)}
-                disabled={isLoading}
-              />
-            </div>
-            
-            {/* Blood compatibility info box */}
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
-              <h3 className="font-medium mb-1 text-sm">Blood Type Compatibility</h3>
-              <div className="text-xs space-y-1">
-                <p><strong>Can donate to:</strong> {bloodCompatibilityInfo.canDonateTo}</p>
-                <p><strong>Can receive from:</strong> {bloodCompatibilityInfo.canReceiveFrom}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center pt-2">
-              <input type="checkbox" id="ai-match" className="mr-2" defaultChecked />
-              <label htmlFor="ai-match" className="text-sm">Use AI to find the best matched hospitals</label>
-            </div>
-            
-            <Button 
-              className="w-full bg-purple-600 hover:bg-purple-700 flex items-center justify-center gap-2"
-              onClick={handleCreateRequest}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
-                  Creating Request...
-                </>
-              ) : (
-                <>
-                  <Brain className="h-4 w-4" />
-                  Find Hospital Matches with AI
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-xl font-bold">
-            <div className="flex items-center">
-              <Brain className="mr-2 h-5 w-5 text-purple-500" />
-              BloodBank AI Smart Matching System
-            </div>
-          </CardTitle>
-          <Badge variant="outline" className="bg-purple-50 text-purple-700">
-            Smart Matching
-          </Badge>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
-              <h3 className="font-medium mb-2">BloodBank AI Match Parameters</h3>
-              <div className="space-y-4 mb-4">
+    <Card className="w-full shadow-md">
+      <CardHeader className="bg-gradient-to-r from-purple-100 to-red-50">
+        <div className="flex items-center gap-2 mb-2">
+          <Brain className="h-6 w-6 text-purple-600" />
+          <h3 className="text-lg font-medium">BloodBankAI Matching Engine</h3>
+        </div>
+        <CardDescription>
+          Our advanced AI algorithm matches blood requirements with available inventory across hospital networks.
+        </CardDescription>
+      </CardHeader>
+      
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="px-6 pt-6">
+          <TabsList className="w-full grid grid-cols-2">
+            <TabsTrigger value="create-request">Create Blood Request</TabsTrigger>
+            <TabsTrigger value="matching-results">Matching Results</TabsTrigger>
+          </TabsList>
+        </div>
+        
+        <TabsContent value="create-request">
+          <CardContent className="space-y-6 pt-6">
+            <form onSubmit={handleCreateRequest} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Distance Priority</span>
-                    <span className="text-xs text-gray-500">
-                      {distancePriority[0] <= 33 ? 'Low' : 
-                       distancePriority[0] <= 66 ? 'Medium' : 'High'}
-                    </span>
-                  </div>
-                  <Slider 
-                    max={100} 
-                    step={1} 
-                    value={distancePriority}
-                    onValueChange={setDistancePriority}
-                  />
+                  <Label htmlFor="bloodType">Blood Type Required <span className="text-red-500">*</span></Label>
+                  <Select
+                    value={requestForm.bloodType}
+                    onValueChange={(value) => setRequestForm({...requestForm, bloodType: value})}
+                  >
+                    <SelectTrigger id="bloodType" className={errors.bloodType ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select Blood Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {bloodTypes.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          <div className="flex items-center">
+                            <DropletIcon className="h-4 w-4 mr-2 text-red-600" />
+                            <span>{type.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.bloodType && <p className="text-sm text-red-500">{errors.bloodType}</p>}
                 </div>
+                
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Blood Type Compatibility</span>
-                    <span className="text-xs text-gray-500">
-                      {geneticPriority[0] <= 33 ? 'Low' : 
-                       geneticPriority[0] <= 66 ? 'Medium' : 'High'}
-                    </span>
-                  </div>
-                  <Slider 
-                    max={100} 
-                    step={1}
-                    value={geneticPriority}
-                    onValueChange={setGeneticPriority}
+                  <Label htmlFor="units">Units Required <span className="text-red-500">*</span></Label>
+                  <Input 
+                    id="units"
+                    type="number"
+                    min="1"
+                    value={requestForm.units}
+                    onChange={(e) => setRequestForm({...requestForm, units: parseInt(e.target.value) || 1})}
+                    className={errors.units ? "border-red-500" : ""}
                   />
+                  {errors.units && <p className="text-sm text-red-500">{errors.units}</p>}
                 </div>
+                
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Supply Quality</span>
-                    <span className="text-xs text-gray-500">
-                      {qualityPriority[0] <= 33 ? 'Low' : 
-                       qualityPriority[0] <= 66 ? 'Medium' : 'High'}
-                    </span>
-                  </div>
-                  <Slider 
-                    max={100} 
-                    step={1}
-                    value={qualityPriority}
-                    onValueChange={setQualityPriority}
+                  <Label htmlFor="urgency">Urgency <span className="text-red-500">*</span></Label>
+                  <Select
+                    value={requestForm.urgency}
+                    onValueChange={(value) => setRequestForm({...requestForm, urgency: value})}
+                  >
+                    <SelectTrigger id="urgency" className={errors.urgency ? "border-red-500" : ""}>
+                      <SelectValue placeholder="Select Urgency Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="critical">
+                        <div className="flex items-center">
+                          <AlertCircle className="h-4 w-4 mr-2 text-red-600" />
+                          <span>Critical (Within 24 hours)</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="urgent">
+                        <div className="flex items-center">
+                          <Clock className="h-4 w-4 mr-2 text-amber-600" />
+                          <span>Urgent (Within 48 hours)</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="standard">
+                        <div className="flex items-center">
+                          <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                          <span>Standard (Within 7 days)</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {errors.urgency && <p className="text-sm text-red-500">{errors.urgency}</p>}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="neededBy">Needed By <span className="text-red-500">*</span></Label>
+                  <Input 
+                    id="neededBy"
+                    type="date"
+                    value={requestForm.neededBy}
+                    onChange={(e) => setRequestForm({...requestForm, neededBy: e.target.value})}
+                    className={errors.neededBy ? "border-red-500" : ""}
+                    min={new Date().toISOString().split('T')[0]}
                   />
+                  {errors.neededBy && <p className="text-sm text-red-500">{errors.neededBy}</p>}
                 </div>
               </div>
-              <Button 
-                size="sm" 
-                className="w-full bg-purple-600 hover:bg-purple-700 flex items-center gap-2"
-                onClick={handleApplyAiParameters}
-                disabled={isProcessing || !activeRequest}
-              >
-                {isProcessing ? (
-                  <>
-                    <span className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></span>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Filter className="h-4 w-4" /> Apply AI Parameters
-                  </>
-                )}
-              </Button>
-            </div>
-
-            <Tabs defaultValue="potential" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="potential">Potential Hospitals</TabsTrigger>
-                <TabsTrigger value="matched">Matched Hospitals</TabsTrigger>
-              </TabsList>
               
-              <TabsContent value="potential" className="space-y-3 mt-2">
-                {isProcessing ? (
-                  <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-2"></div>
-                    <p className="text-sm text-gray-600">Finding optimal hospital matches with AI...</p>
+              <div className="border-t pt-6">
+                <h4 className="text-sm font-semibold mb-4">Additional Patient Information (Improves AI Matching)</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="patientAge">Patient Age</Label>
+                    <Input 
+                      id="patientAge"
+                      type="number"
+                      placeholder="Optional"
+                      value={requestForm.patientAge}
+                      onChange={(e) => setRequestForm({...requestForm, patientAge: e.target.value})}
+                      className={errors.patientAge ? "border-red-500" : ""}
+                    />
+                    {errors.patientAge && <p className="text-sm text-red-500">{errors.patientAge}</p>}
                   </div>
-                ) : matches.length > 0 ? (
-                  matches
-                    .filter(match => match.status === 'potential')
-                    .map(match => (
-                      <div key={match.donorId} className="p-3 bg-white border rounded-lg shadow-sm relative">
-                        <div className="absolute top-2 right-2">
-                          <Badge className={`${
-                            match.matchScore > 90 ? 'bg-green-600' :
-                            match.matchScore > 80 ? 'bg-amber-600' :
-                            'bg-blue-600'
-                          }`}>
-                            Match: {match.matchScore}%
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="patientWeight">Patient Weight (kg)</Label>
+                    <Input 
+                      id="patientWeight"
+                      type="number"
+                      placeholder="Optional"
+                      value={requestForm.patientWeight}
+                      onChange={(e) => setRequestForm({...requestForm, patientWeight: e.target.value})}
+                      className={errors.patientWeight ? "border-red-500" : ""}
+                    />
+                    {errors.patientWeight && <p className="text-sm text-red-500">{errors.patientWeight}</p>}
+                  </div>
+                </div>
+                
+                <div className="space-y-2 mb-6">
+                  <Label htmlFor="medicalCondition">Medical Condition</Label>
+                  <Textarea 
+                    id="medicalCondition"
+                    placeholder="Brief description of medical condition requiring transfusion (optional)"
+                    value={requestForm.medicalCondition}
+                    onChange={(e) => setRequestForm({...requestForm, medicalCondition: e.target.value})}
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="space-y-3">
+                  <Label>Special Requirements</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {specialRequirements.map((requirement) => (
+                      <div key={requirement.id} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={requirement.id}
+                          checked={requestForm.specialRequirements.includes(requirement.id)}
+                          onCheckedChange={(checked) => 
+                            handleSpecialRequirementsChange(requirement.id, checked === true)
+                          }
+                        />
+                        <label
+                          htmlFor={requirement.id}
+                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {requirement.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <div className="flex gap-2 items-center mb-2">
+                  <Brain className="h-5 w-5 text-purple-600" />
+                  <h4 className="font-medium text-purple-700">AI Matching Benefits</h4>
+                </div>
+                <p className="text-sm text-purple-700">
+                  Our AI considers blood type compatibility, Rh factor, special requirements, and hospital proximity to find the best matches.
+                </p>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button type="submit" className="bg-red-600 hover:bg-red-700">
+                  Create Blood Request & Run AI Matching
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </TabsContent>
+        
+        <TabsContent value="matching-results">
+          <CardContent className="pt-6 pb-2">
+            {isProcessing || isLoadingMatches ? (
+              <div className="text-center py-12">
+                <Brain className="h-12 w-12 text-purple-600 mx-auto animate-pulse mb-4" />
+                <h3 className="text-lg font-medium mb-2">AI Matching In Progress</h3>
+                <p className="text-gray-600 mb-6">Finding optimal blood matches based on compatibility and availability...</p>
+                <Progress value={65} className="w-2/3 mx-auto" />
+              </div>
+            ) : matches.length > 0 ? (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium">
+                    AI Found {matches.length} Potential Matches
+                  </h3>
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <BadgeCheck className="h-3 w-3" />
+                    <span>Sorted by compatibility</span>
+                  </Badge>
+                </div>
+                
+                <div className="space-y-4">
+                  {matches.map((match) => (
+                    <Card key={`${match.donorId}-${match.requestId}`} className="overflow-hidden">
+                      <div className={`flex items-center px-4 py-2 
+                        ${match.compatibilityScore === 100 ? 'bg-green-50 border-b border-green-100' :
+                         match.compatibilityScore >= 90 ? 'bg-blue-50 border-b border-blue-100' : 
+                         'bg-amber-50 border-b border-amber-100'}`}
+                      >
+                        <Hospital className="h-5 w-5 text-slate-600 mr-2" />
+                        <h4 className="font-medium">{match.hospitalName}</h4>
+                        <div className="ml-auto flex items-center gap-2">
+                          <Badge 
+                            variant={match.compatibilityScore === 100 ? 'default' : 
+                                   match.compatibilityScore >= 90 ? 'secondary' : 'outline'}
+                            className={match.compatibilityScore === 100 ? 'bg-green-600' : 
+                                     match.compatibilityScore >= 90 ? 'bg-blue-600' : ''}
+                          >
+                            {formatCompatibilityDisplay(match.compatibilityScore || 0)}
+                          </Badge>
+                          <Badge variant="outline">
+                            {match.matchScore}% Match
                           </Badge>
                         </div>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-semibold">{match.donorName}</p>
-                            <div className="flex items-center text-sm text-gray-600">
-                              <Hospital className="mr-1 h-4 w-4 text-blue-500" />
-                              <span>{match.bloodType} • {match.previousDonations} units available</span>
-                            </div>
-                            <div className="flex items-center text-sm text-gray-600 mt-1">
-                              <MapPin className="mr-1 h-4 w-4 text-blue-500" />
-                              <span>{match.distance}km away</span>
-                            </div>
-                          </div>
-                          <Button 
-                            size="sm" 
-                            className="bg-purple-600 hover:bg-purple-700"
-                            onClick={() => handleContactDonor(match.donorId)}
-                          >
-                            Contact
-                          </Button>
-                        </div>
                       </div>
-                    ))
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-gray-600">No potential hospital matches found for this request.</p>
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="matched" className="space-y-3 mt-2">
-                {matches
-                  .filter(match => match.status !== 'potential')
-                  .length > 0 ? (
-                  matches
-                    .filter(match => match.status !== 'potential')
-                    .map(match => (
-                      <div 
-                        key={match.donorId} 
-                        className={`p-3 rounded-lg shadow-sm relative ${
-                          match.status === 'confirmed' ? 'bg-green-50 border border-green-100' :
-                          match.status === 'in-transit' ? 'bg-amber-50 border border-amber-100' :
-                          'bg-blue-50 border border-blue-100'
-                        }`}
-                      >
-                        <div className="flex justify-between items-start">
+                      
+                      <CardContent className="py-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
+                            <p className="text-sm text-gray-500 mb-1">Blood Available</p>
                             <div className="flex items-center">
-                              <p className="font-semibold">{match.donorName}</p>
-                              <Badge className={`ml-2 ${
-                                match.status === 'confirmed' ? 'bg-green-600' :
-                                match.status === 'in-transit' ? 'bg-amber-600' :
-                                'bg-blue-600'
-                              }`}>
-                                {match.status === 'contacted' ? 'Contacted' :
-                                 match.status === 'confirmed' ? 'Confirmed' :
-                                 match.status === 'in-transit' ? 'In Transit' : 'Completed'}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center text-sm text-gray-600">
-                              <Hospital className={`mr-1 h-4 w-4 ${
-                                match.status === 'confirmed' ? 'text-green-500' :
-                                match.status === 'in-transit' ? 'text-amber-500' :
-                                'text-blue-500'
-                              }`} />
-                              <span>
-                                {match.bloodType} • 
-                                {match.appointmentTime ? 
-                                  ` Transfer: ${new Date(match.appointmentTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : 
-                                  ' Awaiting response'}
+                              <DropletIcon className="h-5 w-5 text-red-600 mr-2" />
+                              <span className="font-medium">
+                                {match.bloodType} {match.bloodRhFactor === 'positive' ? 'Rh+ ('+match.bloodType+'+)' : 'Rh- ('+match.bloodType+'-)'} · {match.availableUnits} units
                               </span>
                             </div>
-                            {match.eta && (
-                              <div className="flex items-center text-sm text-gray-600 mt-1">
-                                <Clock className={`mr-1 h-4 w-4 ${
-                                  match.status === 'confirmed' ? 'text-green-500' :
-                                  match.status === 'in-transit' ? 'text-amber-500' :
-                                  'text-blue-500'
-                                }`} />
-                                <span>ETA: {match.eta} minutes</span>
-                              </div>
-                            )}
                           </div>
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className={`
-                              ${match.status === 'confirmed' ? 'border-green-500 text-green-700' :
-                                match.status === 'in-transit' ? 'border-amber-500 text-amber-700' :
-                                'border-blue-500 text-blue-700'}
-                            `}
-                          >
-                            Details
-                          </Button>
+                          
+                          <div>
+                            <p className="text-sm text-gray-500 mb-1">Distance</p>
+                            <div className="flex items-center">
+                              <MapPin className="h-5 w-5 text-slate-600 mr-2" />
+                              <span>{match.distance.toFixed(1)} km away</span>
+                            </div>
+                          </div>
+                          
+                          {match.specialAttributes && match.specialAttributes.length > 0 && (
+                            <div>
+                              <p className="text-sm text-gray-500 mb-1">Special Attributes</p>
+                              <div className="flex flex-wrap gap-1">
+                                {match.specialAttributes.map((attr) => (
+                                  <Badge key={attr} variant="outline" className="capitalize">
+                                    {attr.replace('-', ' ')}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-gray-600">No matched hospitals yet.</p>
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+                      </CardContent>
+                      
+                      <CardFooter className="flex justify-end py-3 border-t bg-gray-50">
+                        <Button 
+                          onClick={() => handleContactHospital(match)} 
+                          disabled={match.status !== 'potential'}
+                          className="flex items-center gap-1"
+                        >
+                          {match.status === 'contacted' ? (
+                            <>Request Sent</>
+                          ) : (
+                            <>
+                              Contact Hospital <ArrowRight className="h-4 w-4" />
+                            </>
+                          )}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-12">
+                <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">No Matches Found</h3>
+                <p className="text-gray-600 mb-4">Create a blood request to find potential matches from partner hospitals.</p>
+                <Button 
+                  onClick={() => setActiveTab('create-request')} 
+                  variant="outline"
+                >
+                  Create Blood Request
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </TabsContent>
+      </Tabs>
+    </Card>
   );
 };
 

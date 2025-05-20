@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 interface UseAuthFormOptions {
   type: 'login' | 'register';
-  userType: 'donor' | 'hospital';
+  userType: 'hospital';
 }
 
 export default function useAuthForm({ type, userType }: UseAuthFormOptions) {
@@ -39,7 +39,7 @@ export default function useAuthForm({ type, userType }: UseAuthFormOptions) {
     try {
       const success = await register(userData, userType);
       if (success) {
-        navigate('/login', { state: { showMessage: `${userType}-registered` } });
+        navigate('/register', { state: { showMessage: `hospital-registered` } });
       }
     } catch (error) {
       console.error('Registration error:', error);

@@ -1,10 +1,9 @@
 
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, User, Bell, DropletIcon, Brain, LogOut } from 'lucide-react';
+import { Menu, User, LogOut, Brain, Hospital } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Badge } from "@/components/ui/badge";
 import { useAuth } from '../context/AuthContext';
 
 const Navbar: React.FC = () => {
@@ -29,18 +28,6 @@ const Navbar: React.FC = () => {
             >
               Home
             </Link>
-            <Link 
-              to="/events" 
-              className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              Blood Drives
-            </Link>
-            <Link 
-              to="/donate" 
-              className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              Donate
-            </Link>
             
             {isAuthenticated ? (
               <>
@@ -50,10 +37,6 @@ const Navbar: React.FC = () => {
                 >
                   Dashboard
                 </Link>
-                <Button variant="ghost" size="sm" className="relative">
-                  <Bell size={18} />
-                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-600"></span>
-                </Button>
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline" 
@@ -61,7 +44,7 @@ const Navbar: React.FC = () => {
                     onClick={() => navigate('/profile')}
                   >
                     <User size={16} />
-                    {userType === 'hospital' ? 'Hospital Portal' : 'My Profile'}
+                    Hospital Portal
                   </Button>
                   <Button
                     variant="ghost"
@@ -76,17 +59,10 @@ const Navbar: React.FC = () => {
             ) : (
               <>
                 <Link 
-                  to="/login" 
-                  className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2"
-                >
-                  <User size={18} />
-                  Login
-                </Link>
-                <Link 
                   to="/register" 
                   className="bg-red-600 text-white hover:bg-red-700 px-4 py-2 rounded-md text-sm font-medium"
                 >
-                  Register
+                  Login / Register
                 </Link>
               </>
             )}
@@ -116,18 +92,6 @@ const Navbar: React.FC = () => {
                   >
                     Home
                   </Link>
-                  <Link 
-                    to="/events" 
-                    className="text-gray-700 hover:text-red-600 py-2 text-base font-medium"
-                  >
-                    Blood Drives
-                  </Link>
-                  <Link 
-                    to="/donate" 
-                    className="text-gray-700 hover:text-red-600 py-2 text-base font-medium"
-                  >
-                    Donate
-                  </Link>
                   {isAuthenticated ? (
                     <>
                       <Link 
@@ -141,7 +105,7 @@ const Navbar: React.FC = () => {
                         className="justify-start"
                         onClick={() => navigate('/profile')}
                       >
-                        {userType === 'hospital' ? 'Hospital Portal' : 'My Profile'}
+                        Hospital Portal
                       </Button>
                       <Button 
                         variant="destructive"
@@ -157,16 +121,10 @@ const Navbar: React.FC = () => {
                   ) : (
                     <>
                       <Link 
-                        to="/login" 
-                        className="text-gray-700 hover:text-red-600 py-2 text-base font-medium"
-                      >
-                        Login
-                      </Link>
-                      <Link 
                         to="/register" 
                         className="bg-red-600 text-white hover:bg-red-700 px-4 py-2 rounded-md text-base font-medium text-center"
                       >
-                        Register
+                        Login / Register
                       </Link>
                     </>
                   )}

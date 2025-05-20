@@ -5,12 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Hospital, AlertCircle } from "lucide-react";
+import { Hospital, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import useAuthForm from "../../hooks/useAuthForm";
 
 const HospitalRegisterForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isLoading, handleSubmit } = useAuthForm({
+    type: 'register',
+    userType: 'hospital',
+  });
+  
   const [formData, setFormData] = useState({
     hospitalName: '',
     registrationNumber: '',
@@ -44,18 +50,12 @@ const HospitalRegisterForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
     
-    // TODO: Implement actual registration logic when backend is ready
-    console.log('Hospital registration attempt:', formData);
-    toast({
-      title: "Registration Submitted",
-      description: "Your hospital registration is pending approval. We'll notify you once it's verified.",
-      duration: 5000,
-    });
-    navigate('/login', { state: { showMessage: 'hospital-registered' } });
+    // Use the handleSubmit from useAuthForm, passing the entire formData object
+    await handleSubmit(formData);
   };
 
   return (
@@ -81,7 +81,7 @@ const HospitalRegisterForm = () => {
         </div>
       </div>
       
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="hospitalName">Hospital Name</Label>
           <Input
@@ -183,8 +183,19 @@ const HospitalRegisterForm = () => {
           {errors.confirmPassword && <p className="text-xs text-red-500">{errors.confirmPassword}</p>}
         </div>
         
-        <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">
-          Submit Registration
+        <Button 
+          type="submit" 
+          className="w-full bg-red-600 hover:bg-red-700"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> 
+              Submitting...
+            </>
+          ) : (
+            'Submit Registration'
+          )}
         </Button>
       </form>
     </Card>

@@ -2,15 +2,15 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
+import mockDatabaseService from '../services/mockDatabase';
 
-type UserType = 'donor' | 'hospital' | null;
+type UserType = 'hospital' | null;
 
 interface AuthUser {
   id: string;
   name: string;
   email: string;
   type: UserType;
-  bloodType?: string;
   hospitalName?: string;
   isVerified?: boolean;
 }
@@ -26,6 +26,93 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Internal functions to handle database operations
+const authenticateUser = async (email: string, password: string, hospitalId: string) => {
+  // In a real app, this would be an API call to verify credentials against the database
+  try {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    // For demo purposes, accept any non-empty email/password/hospitalId
+    if (!email || !password || !hospitalId) {
+      throw new Error('All fields are required');
+    }
+    
+    // Check if hospital exists in our mock database (in real app, would query DB)
+    const hospitals = await mockDatabaseService.getRegisteredHospitals();
+    const hospital = hospitals.find(h => 
+      h.email.toLowerCase() === email.toLowerCase() && 
+      h.registrationId === hospitalId
+    );
+    
+    if (!hospital) {
+      throw new Error('Invalid credentials or hospital not found');
+    }
+    
+    if (!hospital.verified) {
+      throw new Error('Your hospital account is pending verification');
+    }
+    
+    return {
+      success: true,
+      user: {
+        id: hospital.id,
+        name: hospital.contactPerson,
+        email: hospital.email,
+        type: 'hospital' as UserType,
+        hospitalName: hospital.name,
+        isVerified: true
+      }
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Authentication failed'
+    };
+  }
+};
+
+const registerHospital = async (userData: any) => {
+  try {
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Validate required fields
+    const requiredFields = ['hospitalName', 'email', 'password', 'contactPerson', 'phoneNumber', 'registrationNumber'];
+    for (const field of requiredFields) {
+      if (!userData[field]) {
+        throw new Error(`${field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')} is required`);
+      }
+    }
+    
+    // Check if email already exists (in real app, would query DB)
+    const hospitals = await mockDatabaseService.getRegisteredHospitals();
+    if (hospitals.some(h => h.email.toLowerCase() === userData.email.toLowerCase())) {
+      throw new Error('A hospital with this email already exists');
+    }
+    
+    // Register hospital in mock database
+    await mockDatabaseService.registerHospital({
+      id: `hospital-${Date.now()}`,
+      name: userData.hospitalName,
+      email: userData.email,
+      contactPerson: userData.contactPerson,
+      phone: userData.phoneNumber,
+      registrationId: userData.registrationNumber,
+      address: userData.address || '',
+      verified: false,
+      createdAt: new Date()
+    });
+    
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Registration failed'
+    };
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -37,66 +124,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUser = localStorage.getItem('bloodbank_user');
     const storedUserType = localStorage.getItem('bloodbank_user_type');
     
-    if (storedUser && storedUserType) {
+    if (storedUser && storedUserType === 'hospital') {
       setCurrentUser(JSON.parse(storedUser));
-      setUserType(storedUserType as UserType);
+      setUserType('hospital');
     }
   }, []);
   
-  // Demo login function - would be replaced with real API calls
+  // Database-connected login function
   const login = async (email: string, password: string, type: UserType, extraData?: any): Promise<boolean> => {
     try {
-      // This would be an API call in a real app
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Simulate a successful login
-      let user: AuthUser;
-      
-      if (type === 'donor') {
-        user = {
-          id: `donor-${Date.now()}`,
-          name: email.split('@')[0], // Just for demo
-          email,
-          type: 'donor',
-          bloodType: 'O+', // Would come from the database
-        };
-      } else {
-        // Hospital login
-        const hospitalId = extraData?.hospitalId;
-        if (!hospitalId) {
-          throw new Error('Hospital ID is required');
-        }
-        
-        // Simulate verification check
-        const isVerified = Math.random() > 0.3; // 70% chance of being verified
-        
-        if (!isVerified) {
-          toast({
-            title: "Account Not Verified",
-            description: "Your hospital account is still pending verification.",
-            variant: "destructive",
-          });
-          return false;
-        }
-        
-        user = {
-          id: `hospital-${hospitalId}`,
-          name: 'Hospital Admin', // Would come from the database
-          email,
-          type: 'hospital',
-          hospitalName: 'City General Hospital', // Would come from the database
-          isVerified: true,
-        };
+      if (type !== 'hospital') {
+        toast({
+          title: "Invalid User Type",
+          description: "Only hospitals can login to this system.",
+          variant: "destructive",
+        });
+        return false;
       }
       
-      // Save to local state
-      setCurrentUser(user);
-      setUserType(type);
+      const hospitalId = extraData?.hospitalId;
+      const result = await authenticateUser(email, password, hospitalId);
+      
+      if (!result.success) {
+        toast({
+          title: "Login Failed",
+          description: result.error || "Invalid credentials",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      // Save user data
+      setCurrentUser(result.user);
+      setUserType('hospital');
       
       // Save to local storage (for persistence)
-      localStorage.setItem('bloodbank_user', JSON.stringify(user));
-      localStorage.setItem('bloodbank_user_type', type);
+      localStorage.setItem('bloodbank_user', JSON.stringify(result.user));
+      localStorage.setItem('bloodbank_user_type', 'hospital');
+      
+      toast({
+        title: "Login Successful",
+        description: `Welcome back, ${result.user.hospitalName}!`,
+      });
       
       return true;
     } catch (error) {
@@ -110,25 +179,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  // Demo register function
+  // Database-connected register function
   const register = async (userData: any, type: UserType): Promise<boolean> => {
     try {
-      // This would be an API call in a real app
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // In a real app, would return user data from API
-      if (type === 'hospital') {
+      if (type !== 'hospital') {
         toast({
-          title: "Registration Submitted",
-          description: "Your hospital registration is pending verification.",
+          title: "Invalid User Type",
+          description: "Only hospitals can register to this system.",
+          variant: "destructive",
         });
-      } else {
-        toast({
-          title: "Registration Successful",
-          description: "Your account has been created. You can now log in.",
-        });
+        return false;
       }
+      
+      const result = await registerHospital(userData);
+      
+      if (!result.success) {
+        toast({
+          title: "Registration Failed",
+          description: result.error || "Failed to register. Please try again.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      toast({
+        title: "Registration Submitted",
+        description: "Your hospital registration is pending verification. We'll notify you once it's approved.",
+      });
       
       return true;
     } catch (error) {

@@ -1,67 +1,48 @@
 
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Droplet, Hospital, Database } from 'lucide-react';
+import { Brain, DropletIcon, Hospital, Database, ArrowRight, ChartBar } from 'lucide-react';
 
 const HomePage = () => {
   const navigate = useNavigate();
-
-  // Example blood bank status data (this would come from your MongoDB backend later)
-  const bloodBankStatus = [
-    { hospital: "City General Hospital", 
-      bloodTypes: [
-        { type: "A+", status: "High", units: 50 },
-        { type: "B+", status: "Medium", units: 30 },
-        { type: "O-", status: "Critical", units: 5 },
-      ]
-    },
-    { hospital: "Memorial Medical Center", 
-      bloodTypes: [
-        { type: "AB+", status: "High", units: 45 },
-        { type: "O+", status: "Medium", units: 25 },
-        { type: "A-", status: "Low", units: 10 },
-      ]
-    }
-  ];
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'high': return 'bg-green-100 text-green-700';
-      case 'medium': return 'bg-yellow-100 text-yellow-700';
-      case 'critical':
-      case 'low': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
+  const { isAuthenticated } = useAuth();
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-12">
         {/* Hero Section */}
         <div className="text-center mb-16">
+          <div className="flex justify-center mb-4">
+            <Brain className="h-16 w-16 text-purple-600" />
+          </div>
           <h1 className="text-5xl font-bold text-red-600 mb-6">
-            Blood Donation & Availability Tracker
+            Blood<span className="text-purple-600">Bank</span>AI
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-            Connect with local blood banks and hospitals. Track real-time blood availability 
-            and help save lives by donating when it's needed most.
+            Connect with other hospitals using our AI-powered blood matching system.
+            Track real-time blood availability and help save lives by sharing blood resources across your network.
           </p>
           
           <div className="flex justify-center gap-4 mb-12">
-            <Button
-              onClick={() => navigate('/login')}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Login
-            </Button>
-            <Button
-              onClick={() => navigate('/register')}
-              variant="outline"
-              className="border-red-600 text-red-600 hover:bg-red-50"
-            >
-              Register
-            </Button>
+            {isAuthenticated ? (
+              <Button
+                onClick={() => navigate('/dashboard')}
+                className="bg-red-600 hover:bg-red-700 px-6 py-3 text-lg"
+              >
+                Go to Dashboard
+              </Button>
+            ) : (
+              <>
+                <Button
+                  onClick={() => navigate('/register')}
+                  className="bg-red-600 hover:bg-red-700 px-6 py-3 text-lg"
+                >
+                  Hospital Login/Register
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Stats Section */}
@@ -73,70 +54,99 @@ const HomePage = () => {
             </Card>
 
             <Card className="p-6 text-center">
-              <Droplet className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-semibold mb-2">1000+ Donors</h3>
-              <p className="text-gray-600">Ready to save lives</p>
+              <DropletIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-2xl font-semibold mb-2">1000+ Units</h3>
+              <p className="text-gray-600">Of blood in our system</p>
             </Card>
 
             <Card className="p-6 text-center">
               <Database className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-semibold mb-2">24/7 Updates</h3>
-              <p className="text-gray-600">Real-time availability</p>
+              <h3 className="text-2xl font-semibold mb-2">AI Matching</h3>
+              <p className="text-gray-600">Intelligent blood matching algorithm</p>
             </Card>
           </div>
         </div>
 
-        {/* Blood Bank Status Section */}
+        {/* Features Section */}
         <div className="mb-12">
           <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">
-            Current Blood Bank Status
+            Our Features
           </h2>
-          <div className="grid gap-8">
-            {bloodBankStatus.map((bank, index) => (
-              <Card key={index} className="p-6">
-                <div className="flex items-center mb-4">
-                  <Hospital className="w-6 h-6 text-red-500 mr-2" />
-                  <h3 className="text-xl font-semibold">{bank.hospital}</h3>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {bank.bloodTypes.map((blood, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`${getStatusColor(blood.status)} rounded-lg p-4 text-center`}
-                    >
-                      <div className="text-2xl font-bold mb-1">{blood.type}</div>
-                      <div className="text-sm mb-2">{blood.status}</div>
-                      <div className="font-medium">{blood.units} units</div>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-            ))}
+          <div className="grid md:grid-cols-3 gap-6">
+            <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
+              <div className="rounded-full bg-purple-100 p-3 w-14 h-14 flex items-center justify-center mb-4">
+                <Brain className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3 text-red-600">AI-Powered Matching</h3>
+              <p className="text-gray-600">
+                Our advanced AI algorithm matches blood across hospital networks based on blood type compatibility,
+                Rh factor, special attributes, and urgency to ensure timely and effective transfusions.
+              </p>
+            </Card>
+
+            <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
+              <div className="rounded-full bg-red-100 p-3 w-14 h-14 flex items-center justify-center mb-4">
+                <ChartBar className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3 text-red-600">Real-time Inventory</h3>
+              <p className="text-gray-600">
+                Get instant visibility into your blood inventory and track expiration dates. Connect with nearby hospitals
+                to fulfill urgent blood requirements.
+              </p>
+            </Card>
+
+            <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
+              <div className="rounded-full bg-blue-100 p-3 w-14 h-14 flex items-center justify-center mb-4">
+                <Hospital className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="text-xl font-semibold mb-3 text-red-600">Hospital Network</h3>
+              <p className="text-gray-600">
+                Connect with major hospitals and blood banks to ensure efficient distribution and management of blood resources
+                across your region.
+              </p>
+            </Card>
           </div>
         </div>
 
-        {/* Features Section */}
-        <div className="grid md:grid-cols-3 gap-6">
-          <Card className="p-6">
-            <h3 className="text-xl font-semibold mb-3">Real-time Updates</h3>
-            <p className="text-gray-600">
-              Get instant notifications about blood requirements in your area and track availability in real-time.
-            </p>
-          </Card>
+        <div className="bg-gradient-to-r from-red-50 to-purple-50 p-10 rounded-xl mb-12">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-2xl font-bold mb-4">How BloodBankAI Works</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="flex flex-col items-center">
+                <div className="rounded-full bg-white p-4 mb-3 shadow-md">
+                  <DropletIcon className="h-8 w-8 text-red-600" />
+                </div>
+                <h3 className="font-medium mb-1">Record Inventory</h3>
+                <p className="text-sm text-gray-600">Add your blood inventory with detailed information</p>
+              </div>
+              
+              <div className="flex flex-col items-center">
+                <div className="rounded-full bg-white p-4 mb-3 shadow-md">
+                  <Brain className="h-8 w-8 text-purple-600" />
+                </div>
+                <h3 className="font-medium mb-1">AI Processing</h3>
+                <p className="text-sm text-gray-600">Our AI finds the best matches based on multiple factors</p>
+              </div>
+              
+              <div className="flex flex-col items-center">
+                <div className="rounded-full bg-white p-4 mb-3 shadow-md">
+                  <Hospital className="h-8 w-8 text-blue-600" />
+                </div>
+                <h3 className="font-medium mb-1">Hospital Connection</h3>
+                <p className="text-sm text-gray-600">Connect with matched hospitals to fulfill blood requests</p>
+              </div>
+            </div>
+          </div>
+        </div>
 
-          <Card className="p-6">
-            <h3 className="text-xl font-semibold mb-3">Quick Registration</h3>
-            <p className="text-gray-600">
-              Simple process to register as a donor. Your contribution can help save lives in emergency situations.
-            </p>
-          </Card>
-
-          <Card className="p-6">
-            <h3 className="text-xl font-semibold mb-3">Hospital Network</h3>
-            <p className="text-gray-600">
-              Connected with major hospitals and blood banks to ensure efficient distribution and management.
-            </p>
-          </Card>
+        <div className="text-center">
+          <Button 
+            onClick={() => navigate('/register')} 
+            className="bg-purple-600 hover:bg-purple-700 text-lg px-8 py-6 group"
+          >
+            Join BloodBankAI Today
+            <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+          </Button>
         </div>
       </div>
     </div>

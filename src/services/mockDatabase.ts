@@ -7,6 +7,11 @@ export interface BloodInventory {
   units: number;
   hospital: string;
   lastUpdated: Date;
+  rhFactor: string;
+  processedDate: Date;
+  expirationDate: Date;
+  donorAge?: number;
+  specialAttributes?: string[];
 }
 
 // Blood request data structure
@@ -22,32 +27,10 @@ export interface BloodRequest {
   units: number;
   createdAt: Date;
   neededBy: Date;
-}
-
-// Donation event data structure
-export interface DonationEvent {
-  id: string;
-  title: string;
-  date: Date;
-  location: string;
-  slots: number;
-  registeredDonors: number;
-  description: string;
-  hospitalId: string;
-  hospitalName: string;
-}
-
-// Donor data structure
-export interface DonorProfile {
-  id: string;
-  name: string;
-  email: string;
-  bloodType: string;
-  lastDonation: Date | null;
-  donationsCount: number;
-  eligibleDate: Date;
-  phone?: string;
-  address?: string;
+  patientAge?: number;
+  patientWeight?: number;
+  medicalCondition?: string;
+  specialRequirements?: string[];
 }
 
 // Hospital data structure
@@ -59,17 +42,24 @@ export interface HospitalProfile {
   phone: string;
   verified: boolean;
   requestsCount: number;
+  partnerHospitals: number;
+  location?: {
+    lat: number;
+    lng: number;
+  };
 }
 
-// Donation history data structure
-export interface DonationHistory {
+// Registered Hospital structure
+export interface RegisteredHospital {
   id: string;
-  donorId: string;
-  hospitalId: string;
-  hospitalName: string;
-  date: Date;
-  bloodType: string;
-  status: 'completed' | 'scheduled' | 'cancelled';
+  name: string;
+  email: string;
+  contactPerson: string;
+  phone: string;
+  registrationId: string;
+  address: string;
+  verified: boolean;
+  createdAt: Date;
 }
 
 // AI match data structure
@@ -78,6 +68,7 @@ export interface AiMatch {
   requestId: string;
   donorName: string;
   bloodType: string;
+  bloodRhFactor?: string;
   matchScore: number;
   geneticCompatibility: number;
   distance: number;
@@ -85,19 +76,106 @@ export interface AiMatch {
   status: 'potential' | 'contacted' | 'confirmed' | 'in-transit' | 'completed';
   appointmentTime?: Date;
   eta?: number;
+  compatibilityScore?: number;
+  hospitalName?: string;
+  hospitalId?: string;
+  availableUnits?: number;
+  specialAttributes?: string[];
 }
 
 // Mock blood inventory data
 const mockBloodInventory: BloodInventory[] = [
-  { bloodType: 'A Rh+ (A+)', units: 68, hospital: 'City General Hospital', lastUpdated: new Date() },
-  { bloodType: 'A Rh- (A-)', units: 42, hospital: 'City General Hospital', lastUpdated: new Date() },
-  { bloodType: 'B Rh+ (B+)', units: 45, hospital: 'City General Hospital', lastUpdated: new Date() },
-  { bloodType: 'B Rh- (B-)', units: 31, hospital: 'City General Hospital', lastUpdated: new Date() },
-  { bloodType: 'AB Rh+ (AB+)', units: 72, hospital: 'City General Hospital', lastUpdated: new Date() },
-  { bloodType: 'AB Rh- (AB-)', units: 59, hospital: 'City General Hospital', lastUpdated: new Date() },
-  { bloodType: 'O Rh+ (O+)', units: 23, hospital: 'City General Hospital', lastUpdated: new Date() },
-  { bloodType: 'O Rh- (O-)', units: 15, hospital: 'City General Hospital', lastUpdated: new Date() },
+  { 
+    bloodType: 'A', 
+    rhFactor: 'positive',
+    units: 68, 
+    hospital: 'City General Hospital', 
+    lastUpdated: new Date(),
+    processedDate: new Date(new Date().setDate(new Date().getDate() - 5)),
+    expirationDate: new Date(new Date().setDate(new Date().getDate() + 35)),
+    donorAge: 32,
+    specialAttributes: ['irradiated']
+  },
+  { 
+    bloodType: 'A', 
+    rhFactor: 'negative',
+    units: 42, 
+    hospital: 'City General Hospital', 
+    lastUpdated: new Date(),
+    processedDate: new Date(new Date().setDate(new Date().getDate() - 7)),
+    expirationDate: new Date(new Date().setDate(new Date().getDate() + 33)),
+    donorAge: 45
+  },
+  { 
+    bloodType: 'B', 
+    rhFactor: 'positive',
+    units: 45, 
+    hospital: 'City General Hospital', 
+    lastUpdated: new Date(),
+    processedDate: new Date(new Date().setDate(new Date().getDate() - 3)),
+    expirationDate: new Date(new Date().setDate(new Date().getDate() + 37)),
+    donorAge: 27,
+    specialAttributes: ['cmv-negative']
+  },
+  { 
+    bloodType: 'B', 
+    rhFactor: 'negative',
+    units: 31, 
+    hospital: 'City General Hospital', 
+    lastUpdated: new Date(),
+    processedDate: new Date(new Date().setDate(new Date().getDate() - 10)),
+    expirationDate: new Date(new Date().setDate(new Date().getDate() + 30)),
+    donorAge: 52
+  },
+  { 
+    bloodType: 'AB', 
+    rhFactor: 'positive',
+    units: 72, 
+    hospital: 'City General Hospital', 
+    lastUpdated: new Date(),
+    processedDate: new Date(new Date().setDate(new Date().getDate() - 2)),
+    expirationDate: new Date(new Date().setDate(new Date().getDate() + 38)),
+    donorAge: 35,
+    specialAttributes: ['leukoreduced']
+  },
+  { 
+    bloodType: 'AB', 
+    rhFactor: 'negative',
+    units: 59, 
+    hospital: 'City General Hospital', 
+    lastUpdated: new Date(),
+    processedDate: new Date(new Date().setDate(new Date().getDate() - 4)),
+    expirationDate: new Date(new Date().setDate(new Date().getDate() + 36)),
+    donorAge: 29
+  },
+  { 
+    bloodType: 'O', 
+    rhFactor: 'positive',
+    units: 23, 
+    hospital: 'City General Hospital', 
+    lastUpdated: new Date(),
+    processedDate: new Date(new Date().setDate(new Date().getDate() - 1)),
+    expirationDate: new Date(new Date().setDate(new Date().getDate() + 39)),
+    donorAge: 41,
+    specialAttributes: ['washed']
+  },
+  { 
+    bloodType: 'O', 
+    rhFactor: 'negative',
+    units: 15, 
+    hospital: 'City General Hospital', 
+    lastUpdated: new Date(),
+    processedDate: new Date(new Date().setDate(new Date().getDate() - 6)),
+    expirationDate: new Date(new Date().setDate(new Date().getDate() + 34)),
+    donorAge: 38,
+    specialAttributes: ['irradiated', 'cmv-negative']
+  },
 ];
+
+// Format blood type and Rh factor for display
+const formatBloodType = (type: string, rhFactor: string): string => {
+  return `${type} ${rhFactor === 'positive' ? 'Rh+ ('+type+'+)' : 'Rh- ('+type+'-)'}`; 
+};
 
 // Mock blood requests data
 const mockBloodRequests: BloodRequest[] = [
@@ -113,6 +191,10 @@ const mockBloodRequests: BloodRequest[] = [
     units: 3,
     createdAt: new Date(new Date().setDate(new Date().getDate() - 1)),
     neededBy: new Date(new Date().setDate(new Date().getDate() + 1)),
+    patientAge: 56,
+    patientWeight: 75,
+    medicalCondition: 'Surgery',
+    specialRequirements: ['irradiated']
   },
   {
     id: '2',
@@ -126,6 +208,10 @@ const mockBloodRequests: BloodRequest[] = [
     units: 2,
     createdAt: new Date(new Date().setDate(new Date().getDate() - 2)),
     neededBy: new Date(new Date().setDate(new Date().getDate() + 3)),
+    patientAge: 32,
+    patientWeight: 68,
+    medicalCondition: 'Trauma',
+    specialRequirements: ['cmv-negative']
   },
   {
     id: '3',
@@ -139,89 +225,12 @@ const mockBloodRequests: BloodRequest[] = [
     units: 4,
     createdAt: new Date(new Date().setDate(new Date().getDate() - 3)),
     neededBy: new Date(new Date().setDate(new Date().getDate() + 7)),
+    patientAge: 45,
+    patientWeight: 82,
+    medicalCondition: 'Anemia',
+    specialRequirements: ['leukoreduced']
   },
 ];
-
-// Mock donation events data
-const mockDonationEvents: DonationEvent[] = [
-  {
-    id: '1',
-    title: 'City General Hospital Blood Drive',
-    date: new Date(new Date().setDate(new Date().getDate() + 13)),
-    location: '123 Medical Center Ave',
-    slots: 50,
-    registeredDonors: 32,
-    description: 'Join us for our monthly blood donation drive. All blood types needed.',
-    hospitalId: 'hospital-1',
-    hospitalName: 'City General Hospital',
-  },
-  {
-    id: '2',
-    title: 'Community Center Blood Donation',
-    date: new Date(new Date().setDate(new Date().getDate() + 18)),
-    location: '456 Community Square',
-    slots: 30,
-    registeredDonors: 12,
-    description: 'Emergency blood drive focusing on O- and A+ blood types.',
-    hospitalId: 'hospital-2',
-    hospitalName: 'General Hospital',
-  },
-  {
-    id: '3',
-    title: 'University Blood Drive',
-    date: new Date(new Date().setDate(new Date().getDate() + 21)),
-    location: 'University Campus Center',
-    slots: 100,
-    registeredDonors: 45,
-    description: 'Annual university blood drive. Free refreshments for all donors!',
-    hospitalId: 'hospital-3',
-    hospitalName: 'Medical Center',
-  },
-];
-
-// Mock donation history data
-const mockDonationHistory: DonationHistory[] = [
-  {
-    id: '1',
-    donorId: 'donor-1',
-    hospitalId: 'hospital-1',
-    hospitalName: 'City Blood Bank',
-    date: new Date(new Date().setDate(new Date().getDate() - 75)),
-    bloodType: 'O Rh+ (O+)',
-    status: 'completed',
-  },
-  {
-    id: '2',
-    donorId: 'donor-1',
-    hospitalId: 'hospital-2',
-    hospitalName: 'General Hospital Drive',
-    date: new Date(new Date().setDate(new Date().getDate() - 150)),
-    bloodType: 'O Rh+ (O+)',
-    status: 'completed',
-  },
-  {
-    id: '3',
-    donorId: 'donor-1',
-    hospitalId: 'hospital-3',
-    hospitalName: 'Community Blood Drive',
-    date: new Date(new Date().setDate(new Date().getDate() - 235)),
-    bloodType: 'O Rh+ (O+)',
-    status: 'completed',
-  },
-];
-
-// Mock donor profile
-const mockDonorProfile: DonorProfile = {
-  id: 'donor-1',
-  name: 'Rahul Sharma',
-  email: 'rahul@example.com',
-  bloodType: 'O Rh+ (O+)',
-  lastDonation: new Date(new Date().setDate(new Date().getDate() - 75)),
-  donationsCount: 3,
-  eligibleDate: new Date(new Date().setDate(new Date().getDate() - 15)),
-  phone: '+91 98765 43210',
-  address: '789 Resident Colony, New Delhi',
-};
 
 // Mock hospital profile
 const mockHospitalProfile: HospitalProfile = {
@@ -232,48 +241,118 @@ const mockHospitalProfile: HospitalProfile = {
   phone: '+91 11223 44556',
   verified: true,
   requestsCount: 12,
+  partnerHospitals: 5,
+  location: {
+    lat: 19.0760,
+    lng: 72.8777
+  }
+};
+
+// Mock registered hospitals
+const mockRegisteredHospitals: RegisteredHospital[] = [
+  {
+    id: 'hospital-1',
+    name: 'City General Hospital',
+    email: 'admin@cityhospital.com',
+    contactPerson: 'Dr. Rajesh Kumar',
+    phone: '+91 11223 44556',
+    registrationId: 'CGH123456',
+    address: '123 Medical Center Ave, Mumbai',
+    verified: true,
+    createdAt: new Date(new Date().setMonth(new Date().getMonth() - 6))
+  },
+  {
+    id: 'hospital-2',
+    name: 'Metro Healthcare',
+    email: 'info@metrohealthcare.com',
+    contactPerson: 'Dr. Priya Singh',
+    phone: '+91 98765 43210',
+    registrationId: 'MHC789012',
+    address: '456 Health Avenue, Delhi',
+    verified: true,
+    createdAt: new Date(new Date().setMonth(new Date().getMonth() - 4))
+  },
+  {
+    id: 'hospital-3',
+    name: 'Valley Medical Center',
+    email: 'contact@valleymedical.org',
+    contactPerson: 'Dr. Amit Patel',
+    phone: '+91 87654 32109',
+    registrationId: 'VMC345678',
+    address: '789 Valley Road, Bangalore',
+    verified: false,
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 5))
+  }
+];
+
+// Blood compatibility chart - defining which blood types can donate to which recipients
+const bloodCompatibility: {[key: string]: string[]} = {
+  'A+': ['A+', 'AB+'],
+  'A-': ['A+', 'A-', 'AB+', 'AB-'],
+  'B+': ['B+', 'AB+'],
+  'B-': ['B+', 'B-', 'AB+', 'AB-'],
+  'AB+': ['AB+'],
+  'AB-': ['AB+', 'AB-'],
+  'O+': ['A+', 'B+', 'AB+', 'O+'],
+  'O-': ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
 };
 
 // Mock AI matches
 const mockAiMatches: AiMatch[] = [
   {
-    donorId: 'donor-2',
+    donorId: 'hospital-2',
     requestId: '1',
-    donorName: 'Rajesh Kumar',
-    bloodType: 'O Rh+ (O+)',
+    donorName: 'Metro Healthcare',
+    bloodType: 'O',
+    bloodRhFactor: 'positive',
     matchScore: 97,
     geneticCompatibility: 95,
     distance: 3.2,
     previousDonations: 3,
     status: 'potential',
+    hospitalName: 'Metro Healthcare',
+    hospitalId: 'hospital-2',
+    availableUnits: 45,
+    specialAttributes: ['irradiated']
   },
   {
-    donorId: 'donor-3',
+    donorId: 'hospital-3',
     requestId: '1',
-    donorName: 'Priya Singh',
-    bloodType: 'O Rh+ (O+)',
+    donorName: 'Valley Medical Center',
+    bloodType: 'O',
+    bloodRhFactor: 'positive',
     matchScore: 94,
     geneticCompatibility: 92,
     distance: 4.8,
     previousDonations: 5,
     status: 'potential',
+    hospitalName: 'Valley Medical Center',
+    hospitalId: 'hospital-3',
+    availableUnits: 32,
+    specialAttributes: ['irradiated', 'leukoreduced']
   },
   {
-    donorId: 'donor-4',
+    donorId: 'hospital-4',
     requestId: '2',
-    donorName: 'Amit Sharma',
-    bloodType: 'O Rh- (O-)',
+    donorName: 'Central Medical Institute',
+    bloodType: 'O',
+    bloodRhFactor: 'negative',
     matchScore: 89,
     geneticCompatibility: 86,
     distance: 2.5,
     previousDonations: 1,
     status: 'potential',
+    hospitalName: 'Central Medical Institute',
+    hospitalId: 'hospital-4',
+    availableUnits: 18,
+    specialAttributes: ['cmv-negative']
   },
   {
-    donorId: 'donor-5',
+    donorId: 'hospital-5',
     requestId: '3',
-    donorName: 'Neha Patel',
-    bloodType: 'AB Rh+ (AB+)',
+    donorName: 'Eastern Healthcare',
+    bloodType: 'B',
+    bloodRhFactor: 'positive',
     matchScore: 91,
     geneticCompatibility: 89,
     distance: 3.8,
@@ -281,72 +360,126 @@ const mockAiMatches: AiMatch[] = [
     status: 'confirmed',
     appointmentTime: new Date(new Date().setHours(new Date().getHours() + 4)),
     eta: 35,
-  },
-  {
-    donorId: 'donor-6',
-    requestId: '2',
-    donorName: 'Rahul Gupta',
-    bloodType: 'O Rh+ (O+)',
-    matchScore: 93,
-    geneticCompatibility: 90,
-    distance: 5.5,
-    previousDonations: 4,
-    status: 'in-transit',
-    appointmentTime: new Date(new Date().setHours(new Date().getHours() + 5.5)),
-    eta: 55,
+    hospitalName: 'Eastern Healthcare',
+    hospitalId: 'hospital-5',
+    availableUnits: 26,
+    specialAttributes: ['leukoreduced']
   },
 ];
 
-// Nearby blood banks
-const mockNearbyBloodBanks = [
+// Nearby hospitals with available blood
+const mockNearbyHospitals = [
   {
-    id: 'bank-1',
-    name: 'Central Blood Bank',
+    id: 'hospital-2',
+    name: 'Metro Healthcare',
     distance: 5.2,
-    availableUnits: { 'O Rh+ (O+)': 23 },
-    address: '456 Main Street, Mumbai',
-    phone: '+91 98765 12345',
-    openHours: '24/7',
+    availableUnits: { 'O+': 23, 'AB-': 14, 'B+': 31 },
+    availableBlood: [
+      { bloodType: 'O', rhFactor: 'positive', units: 23, specialAttributes: ['irradiated'] },
+      { bloodType: 'AB', rhFactor: 'negative', units: 14 },
+      { bloodType: 'B', rhFactor: 'positive', units: 31, specialAttributes: ['leukoreduced'] }
+    ],
+    address: '456 Health Avenue, Delhi',
+    phone: '+91 98765 43210',
+    responseTime: '15-30 min',
   },
   {
-    id: 'bank-2',
-    name: 'Regional Medical Center',
+    id: 'hospital-3',
+    name: 'Valley Medical Center',
     distance: 7.8,
-    availableUnits: { 'O Rh+ (O+)': 18 },
-    address: '789 Hospital Road, Mumbai',
-    phone: '+91 98765 54321',
-    openHours: '9 AM - 8 PM',
+    availableUnits: { 'O+': 18, 'A+': 42 },
+    availableBlood: [
+      { bloodType: 'O', rhFactor: 'positive', units: 18, specialAttributes: ['irradiated', 'leukoreduced'] },
+      { bloodType: 'A', rhFactor: 'positive', units: 42 }
+    ],
+    address: '789 Valley Road, Bangalore',
+    phone: '+91 87654 32109',
+    responseTime: '30-45 min',
   },
   {
-    id: 'bank-3',
-    name: 'City Blood Services',
+    id: 'hospital-4',
+    name: 'Central Medical Institute',
     distance: 3.6,
-    availableUnits: { 'O Rh+ (O+)': 9 },
-    address: '321 Blood Bank Avenue, Mumbai',
-    phone: '+91 98765 67890',
-    openHours: '8 AM - 6 PM',
+    availableUnits: { 'O-': 9, 'A-': 15, 'B-': 12 },
+    availableBlood: [
+      { bloodType: 'O', rhFactor: 'negative', units: 9, specialAttributes: ['cmv-negative'] },
+      { bloodType: 'A', rhFactor: 'negative', units: 15 },
+      { bloodType: 'B', rhFactor: 'negative', units: 12 }
+    ],
+    address: '321 Medical Boulevard, Chennai',
+    phone: '+91 76543 21098',
+    responseTime: '10-20 min',
   },
 ];
 
-// Updated interface for registerForEvent function response
-interface RegisterEventResponse {
-  success: boolean;
-  message?: string; // Add message property
-}
+// Function to calculate blood compatibility score
+const calculateBloodCompatibilityScore = (donorBloodType: string, donorRhFactor: string, recipientBloodType: string): number => {
+  // Convert to short format for compatibility check
+  const donorShortType = donorBloodType + (donorRhFactor === 'positive' ? '+' : '-');
+  const recipientShortType = recipientBloodType.includes('Rh+') ? recipientBloodType.charAt(0) + '+' : recipientBloodType.charAt(0) + '-';
+  
+  // Perfect match - same blood type
+  if (donorShortType === recipientShortType) {
+    return 100;
+  }
+  
+  // Check if donor can donate to recipient
+  if (bloodCompatibility[donorShortType]?.includes(recipientShortType)) {
+    // Universal donor (O-) gets a high score but not 100 (reserve 100 for exact matches)
+    if (donorShortType === 'O-') {
+      return 95;
+    }
+    // Other compatible types get a good score
+    return 90;
+  }
+  
+  // Not compatible
+  return 0;
+};
 
 // Mock Database Services
 export const mockDatabaseService = {
   // Get blood inventory
-  getBloodInventory: () => Promise.resolve(mockBloodInventory),
+  getBloodInventory: () => Promise.resolve(
+    mockBloodInventory.map(item => ({
+      ...item,
+      bloodType: formatBloodType(item.bloodType, item.rhFactor)
+    }))
+  ),
+  
+  // Get blood inventory details (includes all parameters)
+  getBloodInventoryDetails: () => Promise.resolve(mockBloodInventory),
   
   // Update blood inventory
-  updateBloodInventory: (bloodType: string, units: number) => {
-    const inventory = mockBloodInventory.find(item => item.bloodType === bloodType);
+  updateBloodInventory: (bloodType: string, rhFactor: string, units: number, additionalParams: any = {}) => {
+    const inventory = mockBloodInventory.find(item => 
+      item.bloodType === bloodType && 
+      item.rhFactor === rhFactor
+    );
+    
     if (inventory) {
       inventory.units = units;
       inventory.lastUpdated = new Date();
+      
+      // Update additional parameters if provided
+      if (additionalParams.processedDate) inventory.processedDate = additionalParams.processedDate;
+      if (additionalParams.expirationDate) inventory.expirationDate = additionalParams.expirationDate;
+      if (additionalParams.donorAge) inventory.donorAge = additionalParams.donorAge;
+      if (additionalParams.specialAttributes) inventory.specialAttributes = additionalParams.specialAttributes;
     }
+    
     return Promise.resolve(inventory);
+  },
+  
+  // Add new blood inventory
+  addBloodInventory: (data: Omit<BloodInventory, 'lastUpdated'>) => {
+    const newInventory = {
+      ...data,
+      lastUpdated: new Date()
+    };
+    
+    mockBloodInventory.push(newInventory);
+    return Promise.resolve(newInventory);
   },
   
   // Get blood requests
@@ -364,68 +497,114 @@ export const mockDatabaseService = {
     return Promise.resolve(newRequest);
   },
   
-  // Get donation events
-  getDonationEvents: () => Promise.resolve(mockDonationEvents),
-  
-  // Create donation event
-  createDonationEvent: (event: Omit<DonationEvent, 'id' | 'registeredDonors'>) => {
-    const newEvent = {
-      ...event,
-      id: String(mockDonationEvents.length + 1),
-      registeredDonors: 0,
-    };
-    mockDonationEvents.push(newEvent);
-    return Promise.resolve(newEvent);
-  },
-  
-  // Register for event
-  registerForEvent: async (eventId: string, userId: string): Promise<RegisterEventResponse> => {
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
-    
-    // Success 80% of the time
-    if (Math.random() > 0.2) {
-      return { 
-        success: true 
-      };
-    } else {
-      return { 
-        success: false, 
-        message: "Registration failed. Please try again later." 
-      };
-    }
-  },
-  
-  // Get donor profile
-  getDonorProfile: () => Promise.resolve(mockDonorProfile),
-  
   // Get hospital profile
   getHospitalProfile: () => Promise.resolve(mockHospitalProfile),
   
-  // Get donation history
-  getDonationHistory: () => Promise.resolve(mockDonationHistory),
+  // Get registered hospitals
+  getRegisteredHospitals: () => Promise.resolve(mockRegisteredHospitals),
+  
+  // Register new hospital
+  registerHospital: (hospital: RegisteredHospital) => {
+    mockRegisteredHospitals.push(hospital);
+    return Promise.resolve({ success: true });
+  },
   
   // Get AI matches
   getAiMatches: () => Promise.resolve(mockAiMatches),
   
-  // Get nearby blood banks
-  getNearbyBloodBanks: () => Promise.resolve(mockNearbyBloodBanks),
+  // Get nearby hospitals with available blood
+  getNearbyHospitals: () => Promise.resolve(mockNearbyHospitals),
 
   // Process AI-based matching for a blood request
   processAiMatching: (requestId: string) => {
+    // Find the request to match
+    const request = mockBloodRequests.find(req => req.id === requestId);
+    if (!request) {
+      return Promise.resolve({
+        success: false,
+        error: "Blood request not found"
+      });
+    }
+
+    // Get request blood type
+    const requestBloodType = request.bloodType;
+
     // Simulate AI processing delay
     return new Promise(resolve => {
       setTimeout(() => {
+        // Generate matches based on nearby hospitals and their blood inventory
+        const potentialMatches = mockNearbyHospitals.flatMap(hospital => {
+          return hospital.availableBlood
+            .filter(blood => {
+              // Check if this blood type is compatible with the requested type
+              const hospitalBloodType = `${blood.bloodType} ${blood.rhFactor === 'positive' ? 'Rh+ ('+blood.bloodType+'+)' : 'Rh- ('+blood.bloodType+'-)'}`; 
+              const compatibilityScore = calculateBloodCompatibilityScore(
+                blood.bloodType, 
+                blood.rhFactor,
+                requestBloodType
+              );
+              return compatibilityScore > 0 && blood.units >= request.units;
+            })
+            .map(blood => {
+              // For each compatible blood type, create a match
+              const hospitalBloodType = `${blood.bloodType} ${blood.rhFactor === 'positive' ? 'Rh+ ('+blood.bloodType+'+)' : 'Rh- ('+blood.bloodType+'-)'}`; 
+              const compatibilityScore = calculateBloodCompatibilityScore(
+                blood.bloodType, 
+                blood.rhFactor,
+                requestBloodType
+              );
+              
+              // Calculate additional match scores
+              const distanceScore = Math.max(0, 100 - (hospital.distance * 5)); // Lower distance is better
+              const specialAttributesScore = request.specialRequirements && blood.specialAttributes ?
+                request.specialRequirements.filter(req => 
+                  blood.specialAttributes?.includes(req)
+                ).length * 5 : 0;
+              
+              // Combine scores with appropriate weights
+              const combinedScore = Math.round(
+                (compatibilityScore * 0.7) + // Blood compatibility is most important
+                (distanceScore * 0.2) +      // Distance is next important
+                (specialAttributesScore * 0.1) // Special requirements are also factored
+              );
+              
+              return {
+                donorId: hospital.id,
+                requestId: request.id,
+                donorName: hospital.name,
+                bloodType: blood.bloodType,
+                bloodRhFactor: blood.rhFactor,
+                matchScore: combinedScore,
+                compatibilityScore: compatibilityScore,
+                geneticCompatibility: Math.floor(Math.random() * 10) + 85, // Placeholder for future genetic matching
+                distance: hospital.distance,
+                previousDonations: Math.floor(Math.random() * 5), // Placeholder
+                status: 'potential',
+                hospitalName: hospital.name,
+                hospitalId: hospital.id,
+                availableUnits: blood.units,
+                specialAttributes: blood.specialAttributes
+              } as AiMatch;
+            });
+        });
+
+        // Sort matches by score (highest first)
+        const sortedMatches = potentialMatches
+          .filter(match => match.matchScore > 0) // Remove incompatible matches
+          .sort((a, b) => b.matchScore - a.matchScore);
+        
         resolve({
           success: true,
-          matches: mockAiMatches.filter(match => match.requestId === requestId),
+          matches: sortedMatches,
+          requestBloodType: requestBloodType
         });
       }, 1500);
     });
   },
   
-  // Contact donor for a blood request
-  contactDonor: (donorId: string, requestId: string) => {
-    const match = mockAiMatches.find(m => m.donorId === donorId && m.requestId === requestId);
+  // Contact hospital for a blood request
+  contactHospital: (hospitalId: string, requestId: string) => {
+    const match = mockAiMatches.find(m => m.donorId === hospitalId && m.requestId === requestId);
     if (match) {
       match.status = 'contacted';
     }

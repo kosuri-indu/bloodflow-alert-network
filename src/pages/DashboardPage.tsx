@@ -9,35 +9,54 @@ import {
   Hospital,
   AlertCircle, 
   TrendingUp, 
-  Brain
+  Brain,
+  Plus,
+  Clock
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import mockDatabaseService, { BloodRequest } from "@/services/mockDatabase";
+import mockDatabaseService, { BloodRequest, BloodInventory } from "@/services/mockDatabase";
 import AiBloodMatchingSystem from "@/components/ai/AiBloodMatchingSystem";
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from "../context/AuthContext";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const DashboardPage = () => {
-  const [bloodInventory, setBloodInventory] = useState<any[]>([]);
+  const [bloodInventory, setBloodInventory] = useState<BloodInventory[]>([]);
   const [bloodRequests, setBloodRequests] = useState<BloodRequest[]>([]);
   const [hospitalProfile, setHospitalProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { currentUser } = useAuth();
+  const [isAddingInventory, setIsAddingInventory] = useState(false);
+
+  // New inventory form state
+  const [newInventoryForm, setNewInventoryForm] = useState({
+    bloodType: "",
+    rhFactor: "positive",
+    units: 1,
+    processedDate: format(new Date(), "yyyy-MM-dd"),
+    expirationDate: format(new Date(new Date().setDate(new Date().getDate() + 42)), "yyyy-MM-dd"),
+    donorAge: 30,
+    specialAttributes: [] as string[]
+  });
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       setIsLoading(true);
       try {
-        const [profile, inventory, requests] = await Promise.all([
+        const [profile, inventoryDetails, requests] = await Promise.all([
           mockDatabaseService.getHospitalProfile(),
-          mockDatabaseService.getBloodInventory(),
+          mockDatabaseService.getBloodInventoryDetails(),
           mockDatabaseService.getBloodRequests(),
         ]);
         
         setHospitalProfile(profile);
-        setBloodInventory(inventory);
+        setBloodInventory(inventoryDetails);
         setBloodRequests(requests);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -68,6 +87,100 @@ const DashboardPage = () => {
     }
   };
 
+  // Format blood type for display
+  const formatBloodType = (bloodType: string, rhFactor: string) => {
+    return `${bloodType} ${rhFactor === 'positive' ? `Rh+ (${bloodType}+)` : `Rh- (${bloodType}-)`}`;
+  };
+
+  // Handle add inventory form submit
+  const handleAddInventory = async () => {
+    try {
+      // Basic validation
+      if (!newInventoryForm.bloodType || newInventoryForm.units < 1) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill all required fields correctly.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create new inventory item
+      const newInventory = {
+        bloodType: newInventoryForm.bloodType,
+        rhFactor: newInventoryForm.rhFactor,
+        units: newInventoryForm.units,
+        hospital: hospitalProfile.name,
+        processedDate: new Date(newInventoryForm.processedDate),
+        expirationDate: new Date(newInventoryForm.expirationDate),
+        donorAge: Number(newInventoryForm.donorAge),
+        specialAttributes: newInventoryForm.specialAttributes
+      };
+
+      // Add to database
+      await mockDatabaseService.addBloodInventory(newInventory);
+      
+      // Refresh inventory data
+      const updatedInventory = await mockDatabaseService.getBloodInventoryDetails();
+      setBloodInventory(updatedInventory);
+
+      // Show success message
+      toast({
+        title: "Inventory Added",
+        description: `${newInventoryForm.units} units of ${formatBloodType(newInventoryForm.bloodType, newInventoryForm.rhFactor)} added to inventory.`,
+      });
+
+      // Reset form and close dialog
+      setNewInventoryForm({
+        bloodType: "",
+        rhFactor: "positive",
+        units: 1,
+        processedDate: format(new Date(), "yyyy-MM-dd"),
+        expirationDate: format(new Date(new Date().setDate(new Date().getDate() + 42)), "yyyy-MM-dd"),
+        donorAge: 30,
+        specialAttributes: []
+      });
+      setIsAddingInventory(false);
+    } catch (error) {
+      console.error("Error adding inventory:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add inventory. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Handle checkbox changes for special attributes
+  const handleSpecialAttributesChange = (attributeId: string, checked: boolean) => {
+    if (checked) {
+      setNewInventoryForm({
+        ...newInventoryForm,
+        specialAttributes: [...newInventoryForm.specialAttributes, attributeId]
+      });
+    } else {
+      setNewInventoryForm({
+        ...newInventoryForm,
+        specialAttributes: newInventoryForm.specialAttributes.filter(id => id !== attributeId)
+      });
+    }
+  };
+
+  // Calculate expiry status for blood inventory
+  const getExpiryStatus = (expirationDate: Date) => {
+    const daysRemaining = differenceInDays(new Date(expirationDate), new Date());
+    
+    if (daysRemaining <= 0) {
+      return { status: 'expired', color: 'text-red-600', message: 'Expired' };
+    } else if (daysRemaining <= 7) {
+      return { status: 'critical', color: 'text-red-600', message: `${daysRemaining}d left` };
+    } else if (daysRemaining <= 14) {
+      return { status: 'warning', color: 'text-amber-600', message: `${daysRemaining}d left` };
+    } else {
+      return { status: 'good', color: 'text-green-600', message: `${daysRemaining}d left` };
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
@@ -82,6 +195,9 @@ const DashboardPage = () => {
           </div>
           
           <div className="flex gap-2 mt-4 md:mt-0">
+            <Button className="bg-purple-600 hover:bg-purple-700" onClick={() => setIsAddingInventory(true)}>
+              <Plus className="h-4 w-4 mr-1" /> Add Inventory
+            </Button>
             <Button className="bg-red-600 hover:bg-red-700" onClick={handleCreateBloodRequest}>
               Create Blood Request
             </Button>
@@ -101,7 +217,7 @@ const DashboardPage = () => {
                     <Brain className="h-6 w-6 text-purple-600" />
                   </div>
                   <p className="text-sm text-gray-500">AI Matches</p>
-                  {/* Fix: Using matchPercentage instead of matchCount since matchCount doesn't exist in the BloodRequest type */}
+                  {/* Using matchPercentage instead of matchCount since matchCount doesn't exist in the BloodRequest type */}
                   <p className="text-2xl font-bold">
                     {bloodRequests.reduce((total, req) => {
                       // If matchPercentage is over 70%, consider it a match
@@ -162,33 +278,89 @@ const DashboardPage = () => {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-xl flex items-center justify-between">
                       <span>Blood Inventory</span>
-                      <Button size="sm" variant="outline" className="flex items-center gap-1">
-                        <TrendingUp className="h-4 w-4" /> Update
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        className="flex items-center gap-1"
+                        onClick={() => setIsAddingInventory(true)}
+                      >
+                        <Plus className="h-4 w-4" /> Add Inventory
                       </Button>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    {bloodInventory.map((item) => (
-                      <div key={item.bloodType} className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center">
-                            <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                            <span>{item.bloodType}</span>
-                          </div>
-                          <span className={`text-sm font-medium ${
-                            item.units < 20 ? 'text-red-600' : 
-                            item.units < 50 ? 'text-amber-600' : 
-                            'text-gray-900'
-                          }`}>
-                            {item.units} units ({Math.round((item.units / 100) * 100)}%)
-                          </span>
-                        </div>
-                        <Progress 
-                          value={Math.round((item.units / 100) * 100)} 
-                          className="h-2"
-                        />
-                      </div>
-                    ))}
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-3">Blood Type</th>
+                            <th className="text-left py-3">Units</th>
+                            <th className="text-left py-3">Processed</th>
+                            <th className="text-left py-3">Expiration</th>
+                            <th className="text-left py-3">Special Attributes</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {bloodInventory.map((item, idx) => {
+                            const expiryStatus = getExpiryStatus(item.expirationDate);
+                            
+                            return (
+                              <tr key={idx} className="hover:bg-gray-50">
+                                <td className="py-3">
+                                  <div className="flex items-center">
+                                    <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
+                                    <span className="font-medium">
+                                      {formatBloodType(item.bloodType, item.rhFactor)}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-3">
+                                  <div className={`font-medium ${
+                                    item.units < 10 ? 'text-red-600' : 
+                                    item.units < 30 ? 'text-amber-600' : 
+                                    'text-gray-900'
+                                  }`}>
+                                    {item.units} units
+                                  </div>
+                                </td>
+                                <td className="py-3">
+                                  {format(new Date(item.processedDate), 'MMM d, yyyy')}
+                                </td>
+                                <td className="py-3">
+                                  <div className="flex items-center">
+                                    <span className={`${expiryStatus.color} mr-1`}>
+                                      <Clock className="h-4 w-4 inline mr-1" />
+                                      {expiryStatus.message}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-3">
+                                  {item.specialAttributes && item.specialAttributes.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1">
+                                      {item.specialAttributes.map((attr, i) => (
+                                        <Badge key={i} variant="outline" className="capitalize">
+                                          {attr.replace('-', ' ')}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <span className="text-gray-400">None</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          
+                          {bloodInventory.length === 0 && (
+                            <tr>
+                              <td colSpan={5} className="py-8 text-center text-gray-500">
+                                No blood inventory found. Add inventory to get started.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -257,6 +429,155 @@ const DashboardPage = () => {
           </>
         )}
       </div>
+      
+      {/* Add Inventory Dialog */}
+      <Dialog open={isAddingInventory} onOpenChange={setIsAddingInventory}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add Blood Inventory</DialogTitle>
+            <DialogDescription>
+              Add new blood units to your hospital inventory. The more details you provide, the better our AI can match blood to requests.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bloodType">Blood Type</Label>
+                <Select
+                  value={newInventoryForm.bloodType}
+                  onValueChange={(value) => setNewInventoryForm({...newInventoryForm, bloodType: value})}
+                >
+                  <SelectTrigger id="bloodType">
+                    <SelectValue placeholder="Select Blood Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A">A</SelectItem>
+                    <SelectItem value="B">B</SelectItem>
+                    <SelectItem value="AB">AB</SelectItem>
+                    <SelectItem value="O">O</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="rhFactor">Rh Factor</Label>
+                <Select
+                  value={newInventoryForm.rhFactor}
+                  onValueChange={(value) => setNewInventoryForm({...newInventoryForm, rhFactor: value})}
+                >
+                  <SelectTrigger id="rhFactor">
+                    <SelectValue placeholder="Select Rh Factor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="positive">Positive (+)</SelectItem>
+                    <SelectItem value="negative">Negative (-)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="units">Units</Label>
+              <Input
+                id="units"
+                type="number"
+                min="1"
+                value={newInventoryForm.units}
+                onChange={(e) => setNewInventoryForm({...newInventoryForm, units: parseInt(e.target.value) || 1})}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="processedDate">Processing Date</Label>
+                <Input
+                  id="processedDate"
+                  type="date"
+                  value={newInventoryForm.processedDate}
+                  onChange={(e) => setNewInventoryForm({...newInventoryForm, processedDate: e.target.value})}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="expirationDate">Expiration Date</Label>
+                <Input
+                  id="expirationDate"
+                  type="date"
+                  value={newInventoryForm.expirationDate}
+                  onChange={(e) => setNewInventoryForm({...newInventoryForm, expirationDate: e.target.value})}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="donorAge">Donor Age</Label>
+              <Input
+                id="donorAge"
+                type="number"
+                min="18"
+                max="65"
+                value={newInventoryForm.donorAge}
+                onChange={(e) => setNewInventoryForm({...newInventoryForm, donorAge: parseInt(e.target.value) || 30})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Special Attributes</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="irradiated"
+                    checked={newInventoryForm.specialAttributes.includes('irradiated')}
+                    onCheckedChange={(checked) => 
+                      handleSpecialAttributesChange('irradiated', checked === true)
+                    }
+                  />
+                  <label htmlFor="irradiated" className="text-sm">Irradiated</label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="leukoreduced"
+                    checked={newInventoryForm.specialAttributes.includes('leukoreduced')}
+                    onCheckedChange={(checked) => 
+                      handleSpecialAttributesChange('leukoreduced', checked === true)
+                    }
+                  />
+                  <label htmlFor="leukoreduced" className="text-sm">Leukoreduced</label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="cmv-negative"
+                    checked={newInventoryForm.specialAttributes.includes('cmv-negative')}
+                    onCheckedChange={(checked) => 
+                      handleSpecialAttributesChange('cmv-negative', checked === true)
+                    }
+                  />
+                  <label htmlFor="cmv-negative" className="text-sm">CMV Negative</label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="washed"
+                    checked={newInventoryForm.specialAttributes.includes('washed')}
+                    onCheckedChange={(checked) => 
+                      handleSpecialAttributesChange('washed', checked === true)
+                    }
+                  />
+                  <label htmlFor="washed" className="text-sm">Washed</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddingInventory(false)}>Cancel</Button>
+            <Button onClick={handleAddInventory}>Add to Inventory</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       
       <div className="py-12"></div>
     </div>

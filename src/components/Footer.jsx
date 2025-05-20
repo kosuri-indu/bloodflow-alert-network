@@ -8,12 +8,12 @@ const Footer = () => {
   return (
     <footer className="bg-gray-50 border-t mt-auto">
       <div className="max-w-7xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="col-span-1 md:col-span-2">
-            <h3 className="text-xl font-semibold text-red-600 mb-4">BloodBank AI</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="col-span-1 md:col-span-1">
+            <h3 className="text-xl font-semibold text-red-600 mb-4">BloodBankAI</h3>
             <p className="text-gray-600 max-w-md">
-              Connecting blood donors with those in need. Our platform makes blood donation 
-              easier and more accessible, helping save lives across the community.
+              Connecting hospitals with blood banks using AI. Our platform makes blood matching 
+              easier and more efficient, helping save lives across hospitals.
             </p>
           </div>
           
@@ -27,10 +27,7 @@ const Footer = () => {
                 <Link to="/dashboard" className="text-gray-600 hover:text-red-600">Dashboard</Link>
               </li>
               <li>
-                <Link to="/events" className="text-gray-600 hover:text-red-600">Events</Link>
-              </li>
-              <li>
-                <Link to="/donate" className="text-gray-600 hover:text-red-600">Donate</Link>
+                <Link to="/register" className="text-gray-600 hover:text-red-600">Login / Register</Link>
               </li>
             </ul>
           </div>
@@ -47,7 +44,7 @@ const Footer = () => {
         
         <div className="mt-8 pt-8 border-t border-gray-200">
           <p className="text-center text-gray-500">
-            © {currentYear} BloodBank AI. All rights reserved.
+            © {currentYear} BloodBankAI. All rights reserved.
           </p>
         </div>
       </div>

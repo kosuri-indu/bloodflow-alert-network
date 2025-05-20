@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -34,12 +35,12 @@ const HospitalRegisterForm = () => {
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
     
-    if (!formData.hospitalName) newErrors.hospitalName = "Hospital name is required";
-    if (!formData.registrationNumber) newErrors.registrationNumber = "Registration number is required";
-    if (!formData.address) newErrors.address = "Address is required";
-    if (!formData.contactPerson) newErrors.contactPerson = "Contact person name is required";
-    if (!formData.phoneNumber) newErrors.phoneNumber = "Phone number is required";
-    if (!formData.email) newErrors.email = "Email is required";
+    if (!formData.hospitalName.trim()) newErrors.hospitalName = "Hospital name is required";
+    if (!formData.registrationNumber.trim()) newErrors.registrationNumber = "Registration number is required";
+    if (!formData.address.trim()) newErrors.address = "Address is required";
+    if (!formData.contactPerson.trim()) newErrors.contactPerson = "Contact person name is required";
+    if (!formData.phoneNumber.trim()) newErrors.phoneNumber = "Phone number is required";
+    if (!formData.email.trim()) newErrors.email = "Email is required";
     if (!/^\S+@\S+\.\S+$/.test(formData.email)) newErrors.email = "Email format is invalid";
     if (!formData.password) newErrors.password = "Password is required";
     if (formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
@@ -55,17 +56,19 @@ const HospitalRegisterForm = () => {
     
     // Create a properly formatted userData object that matches what the register function expects
     const userData = {
-      hospitalName: formData.hospitalName,
-      email: formData.email,
+      hospitalName: formData.hospitalName.trim(),
+      email: formData.email.trim(),
       password: formData.password,
-      contactPerson: formData.contactPerson,
-      phoneNumber: formData.phoneNumber,
-      registrationNumber: formData.registrationNumber,
-      address: formData.address
+      contactPerson: formData.contactPerson.trim(),
+      phoneNumber: formData.phoneNumber.trim(),
+      registrationNumber: formData.registrationNumber.trim(),
+      address: formData.address.trim()
     };
     
-    // Call handleRegister directly with the userData object
-    await handleSubmit(formData.email, formData.password, userData);
+    console.log("Sending registration data:", userData); // Debug log
+    
+    // Call handleSubmit with the properly formatted userData
+    await handleSubmit(formData.email.trim(), formData.password, userData);
   };
 
   return (

@@ -37,12 +37,18 @@ export default function useAuthForm({ type, userType }: UseAuthFormOptions) {
   const handleRegister = async (email: string, password: string, userData: any) => {
     setIsLoading(true);
     try {
-      // Make sure userData has all the required properties
-      if (!userData.hospitalName) {
+      // Debug log the userData to check what's being received
+      console.log("useAuthForm received userData:", userData);
+      
+      // Check if hospitalName is explicitly undefined or empty after trimming
+      if (!userData.hospitalName || userData.hospitalName.trim() === '') {
+        console.error("Hospital name validation failed:", userData);
         throw new Error('Hospital name is required');
       }
       
+      // Pass the userData directly to register
       const success = await register(userData, userType);
+      
       if (success) {
         navigate('/register', { state: { showMessage: `hospital-registered` } });
       }

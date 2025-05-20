@@ -62,7 +62,7 @@ const Navbar: React.FC = () => {
                   to="/register" 
                   className="bg-red-600 text-white hover:bg-red-700 px-4 py-2 rounded-md text-sm font-medium"
                 >
-                  Login / Register
+                  Register
                 </Link>
               </>
             )}
@@ -124,7 +124,7 @@ const Navbar: React.FC = () => {
                         to="/register" 
                         className="bg-red-600 text-white hover:bg-red-700 px-4 py-2 rounded-md text-base font-medium text-center"
                       >
-                        Login / Register
+                        Register
                       </Link>
                     </>
                   )}

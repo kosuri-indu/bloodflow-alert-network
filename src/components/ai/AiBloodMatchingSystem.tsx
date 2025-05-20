@@ -37,7 +37,7 @@ const specialRequirements = [
 
 const AiBloodMatchingSystem = () => {
   const { toast } = useToast();
-  const { isProcessing, matches, runAiMatching, contactDonor } = useAiMatching();
+  const { isProcessing, matches, runAiMatching, contactHospital } = useAiMatching();
   
   const [activeTab, setActiveTab] = useState('create-request');
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
@@ -148,7 +148,7 @@ const AiBloodMatchingSystem = () => {
   // Handle contact hospital
   const handleContactHospital = async (match: AiMatch) => {
     try {
-      await contactDonor(match.donorId, match.requestId);
+      await contactHospital(match.donorId, match.requestId);
       
       toast({
         title: "Hospital Contacted",

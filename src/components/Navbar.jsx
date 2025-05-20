@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, User, Bell } from 'lucide-react';
+import { Menu } from 'lucide-react';
 
 const Navbar = () => {
   return (
@@ -22,29 +22,10 @@ const Navbar = () => {
               Home
             </Link>
             <Link 
-              to="/events" 
-              className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              Events
-            </Link>
-            <Link 
-              to="/donate" 
-              className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
-            >
-              Donate
-            </Link>
-            <Link 
               to="/dashboard" 
               className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
             >
               Dashboard
-            </Link>
-            <Link 
-              to="/login" 
-              className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium flex items-center gap-2"
-            >
-              <User size={18} />
-              Login
             </Link>
             <Link 
               to="/register" 

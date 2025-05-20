@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import HomePage from "./pages/HomePage";
 import RegisterPage from "./pages/RegisterPage";
+import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
@@ -27,7 +28,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   
   // Only hospitals are allowed to access protected routes
   if (!isAuthenticated || userType !== 'hospital') {
-    return <Navigate to="/register" />;
+    return <Navigate to="/login" />;
   }
   
   return <>{children}</>;
@@ -42,6 +43,7 @@ const AppRoutes = () => (
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <DashboardPage />

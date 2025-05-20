@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -54,8 +53,8 @@ const HospitalRegisterForm = () => {
     e.preventDefault();
     if (!validateForm()) return;
     
-    // Use the handleSubmit from useAuthForm, passing the entire formData object
-    await handleSubmit(formData);
+    // Fix: Pass email and password as separate arguments, followed by formData
+    await handleSubmit(formData.email, formData.password, formData);
   };
 
   return (

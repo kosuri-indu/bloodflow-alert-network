@@ -108,16 +108,16 @@ export function useAiMatching() {
     }
   };
 
-  const contactDonor = async (donorId: string, requestId: string) => {
+  const contactHospital = async (hospitalId: string, requestId: string) => {
     try {
-      const result = await mockDatabaseService.contactDonor(donorId, requestId);
+      const result = await mockDatabaseService.contactHospital(hospitalId, requestId);
       
       const processedResult = result as { success: boolean; error?: string };
       
       if (processedResult.success) {
         // Update local matches state
         setMatches(prev => prev.map(match => 
-          match.donorId === donorId && match.requestId === requestId 
+          match.hospitalId === hospitalId && match.requestId === requestId 
             ? { ...match, status: 'contacted' } 
             : match
         ));
@@ -147,7 +147,7 @@ export function useAiMatching() {
     isProcessing,
     matches,
     runAiMatching,
-    contactDonor,
+    contactHospital,
   };
 }
 

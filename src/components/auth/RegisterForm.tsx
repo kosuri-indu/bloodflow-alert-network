@@ -5,13 +5,13 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { DropletIcon, Loader2 } from "lucide-react";
+import { Hospital, Loader2 } from "lucide-react";
 import useAuthForm from "../../hooks/useAuthForm";
 
 const RegisterForm = () => {
   const { isLoading, handleSubmit } = useAuthForm({
     type: 'register',
-    userType: 'donor',
+    userType: 'hospital',
   });
   
   const [formData, setFormData] = useState({
@@ -19,7 +19,7 @@ const RegisterForm = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    bloodType: '',
+    hospitalName: '',
   });
   
   const [errors, setErrors] = useState<{
@@ -36,7 +36,7 @@ const RegisterForm = () => {
     if (formData.password.length < 6) newErrors.password = "Password must be at least 6 characters";
     if (!formData.confirmPassword) newErrors.confirmPassword = "Please confirm your password";
     if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = "Passwords do not match";
-    if (!formData.bloodType) newErrors.bloodType = "Blood type is required";
+    if (!formData.hospitalName) newErrors.hospitalName = "Hospital name is required";
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -46,7 +46,7 @@ const RegisterForm = () => {
     e.preventDefault();
     if (!validateForm()) return;
     
-    // Fix: Pass email and password as separate arguments, followed by formData
+    // Pass email and password as separate arguments, followed by formData
     await handleSubmit(formData.email, formData.password, formData);
   };
 
@@ -54,15 +54,27 @@ const RegisterForm = () => {
     <Card className="w-full max-w-md p-6 space-y-6">
       <div className="text-center">
         <div className="flex items-center justify-center mb-2">
-          <DropletIcon className="w-8 h-8 text-red-600" />
+          <Hospital className="w-8 h-8 text-red-600" />
         </div>
-        <h2 className="text-2xl font-bold text-red-600">Donor Registration</h2>
-        <p className="text-gray-600">Join the BloodBankAI donation community</p>
+        <h2 className="text-2xl font-bold text-red-600">Hospital Registration</h2>
+        <p className="text-gray-600">Join the BloodBankAI network</p>
       </div>
       
       <form onSubmit={onSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="name">Full Name</Label>
+          <Label htmlFor="hospitalName">Hospital Name</Label>
+          <Input
+            id="hospitalName"
+            placeholder="Hospital Name"
+            value={formData.hospitalName}
+            onChange={(e) => setFormData({ ...formData, hospitalName: e.target.value })}
+            className={errors.hospitalName ? "border-red-500" : ""}
+          />
+          {errors.hospitalName && <p className="text-xs text-red-500">{errors.hospitalName}</p>}
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="name">Contact Person</Label>
           <Input
             id="name"
             placeholder="Full Name"
@@ -110,28 +122,6 @@ const RegisterForm = () => {
             className={errors.confirmPassword ? "border-red-500" : ""}
           />
           {errors.confirmPassword && <p className="text-xs text-red-500">{errors.confirmPassword}</p>}
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="bloodType">Blood Type</Label>
-          <Select
-            onValueChange={(value) => setFormData({ ...formData, bloodType: value })}
-          >
-            <SelectTrigger id="bloodType" className={errors.bloodType ? "border-red-500" : ""}>
-              <SelectValue placeholder="Blood Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="A+">A Rh+ (A+)</SelectItem>
-              <SelectItem value="A-">A Rh- (A-)</SelectItem>
-              <SelectItem value="B+">B Rh+ (B+)</SelectItem>
-              <SelectItem value="B-">B Rh- (B-)</SelectItem>
-              <SelectItem value="AB+">AB Rh+ (AB+)</SelectItem>
-              <SelectItem value="AB-">AB Rh- (AB-)</SelectItem>
-              <SelectItem value="O+">O Rh+ (O+)</SelectItem>
-              <SelectItem value="O-">O Rh- (O-)</SelectItem>
-            </SelectContent>
-          </Select>
-          {errors.bloodType && <p className="text-xs text-red-500">{errors.bloodType}</p>}
         </div>
 
         <Button 

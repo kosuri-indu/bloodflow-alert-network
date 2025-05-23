@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -67,10 +68,10 @@ const HospitalRegisterForm = () => {
     
     console.log("Sending registration data:", userData); // Debug log
     
-    // Call handleSubmit with the properly formatted userData
-    const success = await handleSubmit(formData.email.trim(), formData.password, userData);
-    
-    if (success) {
+    try {
+      // Call handleSubmit with the properly formatted userData
+      await handleSubmit(formData.email.trim(), formData.password, userData);
+      
       // Show a success message to the user
       toast({
         title: "Registration Submitted",
@@ -81,6 +82,13 @@ const HospitalRegisterForm = () => {
       setTimeout(() => {
         navigate('/register');
       }, 2000);
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast({
+        title: "Registration Failed",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
     }
   };
 

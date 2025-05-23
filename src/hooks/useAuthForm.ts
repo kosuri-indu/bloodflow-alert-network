@@ -48,11 +48,14 @@ export default function useAuthForm({ type, userType }: UseAuthFormOptions) {
       // Debug log the userData to check what's being received
       console.log("useAuthForm received userData:", userData);
       
-      // Check if hospitalName is explicitly undefined or empty after trimming
-      if (!userData.hospitalName || userData.hospitalName.trim() === '') {
+      // Ensure hospitalName exists and is not just whitespace
+      if (!userData.hospitalName || typeof userData.hospitalName !== 'string' || userData.hospitalName.trim() === '') {
         console.error("Hospital name validation failed:", userData);
         throw new Error('Hospital name is required');
       }
+      
+      // Ensure the hospitalName is trimmed to avoid whitespace issues
+      userData.hospitalName = userData.hospitalName.trim();
       
       // Pass the userData directly to register
       const success = await register(userData, userType);

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
 import mockDatabaseService from '../services/mockDatabase';
 
-type UserType = 'hospital' | null;
+type UserType = 'hospital' | 'government' | null;
 
 interface AuthUser {
   id: string;
@@ -13,6 +13,7 @@ interface AuthUser {
   type: UserType;
   hospitalName?: string;
   isVerified?: boolean;
+  isGovernmentOfficial?: boolean;
 }
 
 interface AuthContextType {
@@ -22,48 +23,77 @@ interface AuthContextType {
   login: (email: string, password: string, userType: UserType, extraData?: any) => Promise<boolean>;
   logout: () => void;
   register: (userData: any, userType: UserType) => Promise<boolean>;
+  approveHospital: (hospitalId: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Internal functions to handle database operations
-const authenticateUser = async (email: string, password: string, hospitalId: string) => {
-  // In a real app, this would be an API call to verify credentials against the database
+const authenticateUser = async (email: string, password: string, userType: UserType, extraData?: any) => {
   try {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    // For demo purposes, accept any non-empty email/password/hospitalId
-    if (!email || !password || !hospitalId) {
-      throw new Error('All fields are required');
+    // For demo purposes, accept any non-empty email/password
+    if (!email || !password) {
+      throw new Error('Email and password are required');
     }
-    
-    // Check if hospital exists in our mock database (in real app, would query DB)
-    const hospitals = await mockDatabaseService.getRegisteredHospitals();
-    const hospital = hospitals.find(h => 
-      h.email.toLowerCase() === email.toLowerCase() && 
-      h.registrationId === hospitalId
-    );
-    
-    if (!hospital) {
-      throw new Error('Invalid credentials or hospital not found');
-    }
-    
-    if (!hospital.verified) {
-      throw new Error('Your hospital account is pending verification');
-    }
-    
-    return {
-      success: true,
-      user: {
-        id: hospital.id,
-        name: hospital.contactPerson,
-        email: hospital.email,
-        type: 'hospital' as UserType,
-        hospitalName: hospital.name,
-        isVerified: true
+
+    if (userType === 'government') {
+      // Check if government credentials are valid (using mock hardcoded credentials for demo)
+      const isValidGovernment = email === 'admin@health.gov' && password === 'admin123';
+      
+      if (!isValidGovernment) {
+        throw new Error('Invalid government credentials');
       }
-    };
+      
+      return {
+        success: true,
+        user: {
+          id: 'gov-official-1',
+          name: 'Government Health Official',
+          email: email,
+          type: 'government' as UserType,
+          isGovernmentOfficial: true
+        }
+      };
+    }
+    
+    if (userType === 'hospital') {
+      const hospitalId = extraData?.hospitalId;
+      if (!hospitalId) {
+        throw new Error('Hospital ID is required');
+      }
+      
+      // Check if hospital exists in our mock database
+      const hospitals = await mockDatabaseService.getRegisteredHospitals();
+      const hospital = hospitals.find(h => 
+        h.email.toLowerCase() === email.toLowerCase() && 
+        h.registrationId === hospitalId
+      );
+      
+      if (!hospital) {
+        throw new Error('Invalid credentials or hospital not found');
+      }
+      
+      if (!hospital.verified) {
+        throw new Error('Your hospital account is pending verification by government health officials');
+      }
+      
+      return {
+        success: true,
+        user: {
+          id: hospital.id,
+          name: hospital.contactPerson,
+          email: hospital.email,
+          type: 'hospital' as UserType,
+          hospitalName: hospital.name,
+          isVerified: true
+        }
+      };
+    }
+    
+    throw new Error('Invalid user type');
   } catch (error) {
     return {
       success: false,
@@ -85,13 +115,13 @@ const registerHospital = async (userData: any) => {
       }
     }
     
-    // Check if email already exists (in real app, would query DB)
+    // Check if email already exists
     const hospitals = await mockDatabaseService.getRegisteredHospitals();
     if (hospitals.some(h => h.email.toLowerCase() === userData.email.toLowerCase())) {
       throw new Error('A hospital with this email already exists');
     }
     
-    // Register hospital in mock database
+    // Register hospital in mock database with verified=false
     await mockDatabaseService.registerHospital({
       id: `hospital-${Date.now()}`,
       name: userData.hospitalName,
@@ -124,26 +154,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUser = localStorage.getItem('bloodbank_user');
     const storedUserType = localStorage.getItem('bloodbank_user_type');
     
-    if (storedUser && storedUserType === 'hospital') {
+    if (storedUser && (storedUserType === 'hospital' || storedUserType === 'government')) {
       setCurrentUser(JSON.parse(storedUser));
-      setUserType('hospital');
+      setUserType(storedUserType as UserType);
     }
   }, []);
   
-  // Database-connected login function
+  // Login function that works for both hospital and government users
   const login = async (email: string, password: string, type: UserType, extraData?: any): Promise<boolean> => {
     try {
-      if (type !== 'hospital') {
+      if (type !== 'hospital' && type !== 'government') {
         toast({
           title: "Invalid User Type",
-          description: "Only hospitals can login to this system.",
+          description: "Only hospitals and government officials can login to this system.",
           variant: "destructive",
         });
         return false;
       }
       
-      const hospitalId = extraData?.hospitalId;
-      const result = await authenticateUser(email, password, hospitalId);
+      const result = await authenticateUser(email, password, type, extraData);
       
       if (!result.success) {
         toast({
@@ -156,16 +185,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       // Save user data
       setCurrentUser(result.user);
-      setUserType('hospital');
+      setUserType(type);
       
       // Save to local storage (for persistence)
       localStorage.setItem('bloodbank_user', JSON.stringify(result.user));
-      localStorage.setItem('bloodbank_user_type', 'hospital');
+      localStorage.setItem('bloodbank_user_type', type);
       
       toast({
         title: "Login Successful",
-        description: `Welcome back, ${result.user.hospitalName}!`,
+        description: type === 'hospital' 
+          ? `Welcome back, ${result.user.hospitalName}!` 
+          : "Welcome, Government Health Official",
       });
+      
+      // Redirect to appropriate dashboard
+      if (type === 'government') {
+        navigate('/government-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
       
       return true;
     } catch (error) {
@@ -179,7 +217,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  // Database-connected register function
+  // Register function (only for hospitals)
   const register = async (userData: any, type: UserType): Promise<boolean> => {
     try {
       if (type !== 'hospital') {
@@ -204,7 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       toast({
         title: "Registration Submitted",
-        description: "Your hospital registration is pending verification. We'll notify you once it's approved.",
+        description: "Your hospital registration is pending verification by government health officials. We'll notify you once it's approved.",
       });
       
       return true;
@@ -212,6 +250,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Registration error:', error);
       toast({
         title: "Registration Failed",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+  
+  // New function for government officials to approve hospital registrations
+  const approveHospital = async (hospitalId: string): Promise<boolean> => {
+    try {
+      if (userType !== 'government') {
+        toast({
+          title: "Permission Denied",
+          description: "Only government officials can approve hospital registrations.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      // Update hospital verification status in mock database
+      const result = await mockDatabaseService.verifyHospital(hospitalId);
+      
+      if (!result.success) {
+        toast({
+          title: "Approval Failed",
+          description: result.error || "Failed to approve hospital.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      toast({
+        title: "Hospital Approved",
+        description: `Hospital ${result.hospitalName} has been verified successfully.`,
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Hospital approval error:', error);
+      toast({
+        title: "Approval Failed",
         description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
@@ -238,6 +317,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     logout,
     register,
+    approveHospital,
   };
   
   return (

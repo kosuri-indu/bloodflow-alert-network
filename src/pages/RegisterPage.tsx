@@ -3,25 +3,30 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import HospitalLoginForm from '../components/auth/HospitalLoginForm';
 import HospitalRegisterForm from '../components/auth/HospitalRegisterForm';
-import { Brain, Hospital } from 'lucide-react';
+import { Brain, Hospital, Briefcase } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from '../context/AuthContext';
 import { useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, userType } = useAuth();
   
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      if (userType === 'hospital') {
+        navigate('/dashboard');
+      } else if (userType === 'government') {
+        navigate('/government-dashboard');
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, userType, navigate]);
   
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
           <div className="flex items-center justify-center gap-2">
@@ -54,6 +59,20 @@ const RegisterPage = () => {
             <HospitalRegisterForm />
           </TabsContent>
         </Tabs>
+        
+        <div className="mt-8 text-center">
+          <p className="text-sm text-gray-600 mb-3">
+            Government Health Official?
+          </p>
+          <Button
+            variant="outline"
+            className="flex items-center justify-center mx-auto"
+            onClick={() => navigate('/gov-login')}
+          >
+            <Briefcase className="mr-2 h-4 w-4 text-blue-600" />
+            Access Government Portal
+          </Button>
+        </div>
       </div>
     </div>
   );

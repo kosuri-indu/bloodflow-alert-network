@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 interface UseAuthFormOptions {
   type: 'login' | 'register';
-  userType: 'hospital';
+  userType: 'hospital' | 'government';
 }
 
 export default function useAuthForm({ type, userType }: UseAuthFormOptions) {
@@ -18,9 +18,17 @@ export default function useAuthForm({ type, userType }: UseAuthFormOptions) {
   const handleLogin = async (email: string, password: string, extraData?: any) => {
     setIsLoading(true);
     try {
-      const success = await login(email, password, userType, extraData);
-      if (success) {
-        navigate('/dashboard');
+      console.log(`Login attempt for ${userType} with email: ${email}`);
+      if (userType === 'government') {
+        const success = await login(email, password, userType);
+        if (success) {
+          navigate('/government-dashboard');
+        }
+      } else {
+        const success = await login(email, password, userType, extraData);
+        if (success) {
+          navigate('/dashboard');
+        }
       }
     } catch (error) {
       console.error('Login error:', error);

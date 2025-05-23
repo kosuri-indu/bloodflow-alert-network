@@ -8,6 +8,8 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import HomePage from "./pages/HomePage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
+import GovernmentLoginPage from "./pages/GovernmentLoginPage";
+import GovernmentDashboardPage from "./pages/GovernmentDashboardPage";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -21,13 +23,25 @@ const queryClient = new QueryClient({
   },
 });
 
-// Protected route component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+// Protected route for hospitals
+const HospitalProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, userType } = useAuth();
   
-  // Only hospitals are allowed to access protected routes
+  // Only hospitals are allowed to access hospital routes
   if (!isAuthenticated || userType !== 'hospital') {
     return <Navigate to="/register" />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Protected route for government officials
+const GovernmentProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, userType } = useAuth();
+  
+  // Only government officials are allowed to access government routes
+  if (!isAuthenticated || userType !== 'government') {
+    return <Navigate to="/gov-login" />;
   }
   
   return <>{children}</>;
@@ -42,10 +56,16 @@ const AppRoutes = () => (
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/gov-login" element={<GovernmentLoginPage />} />
           <Route path="/dashboard" element={
-            <ProtectedRoute>
+            <HospitalProtectedRoute>
               <DashboardPage />
-            </ProtectedRoute>
+            </HospitalProtectedRoute>
+          } />
+          <Route path="/government-dashboard" element={
+            <GovernmentProtectedRoute>
+              <GovernmentDashboardPage />
+            </GovernmentProtectedRoute>
           } />
           <Route path="*" element={<NotFound />} />
         </Routes>

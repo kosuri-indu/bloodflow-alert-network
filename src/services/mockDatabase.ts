@@ -58,42 +58,8 @@ export interface AiMatch {
   compatibilityScore?: number;
 }
 
-// In-memory storage
-let hospitals: Hospital[] = [
-  {
-    id: 'hospital-123',
-    name: 'Central Hospital',
-    email: 'admin@centralhospital.com',
-    contactPerson: 'Dr. John Smith',
-    phone: '123-456-7890',
-    registrationId: 'CH-12345',
-    address: '123 Main Street, Cityville',
-    verified: true,
-    createdAt: new Date('2023-01-15')
-  },
-  {
-    id: 'hospital-456',
-    name: 'Memorial Medical Center',
-    email: 'contact@memorialmed.org',
-    contactPerson: 'Dr. Jane Williams',
-    phone: '987-654-3210',
-    registrationId: 'MMC-54321',
-    address: '456 Oak Avenue, Townsburg',
-    verified: true,
-    createdAt: new Date('2023-02-20')
-  },
-  {
-    id: 'hospital-789',
-    name: 'Community Care Hospital',
-    email: 'info@communitycare.net',
-    contactPerson: 'Dr. Robert Chen',
-    phone: '456-789-0123',
-    registrationId: 'CCH-98765',
-    address: '789 Pine Road, Villageton',
-    verified: false,
-    createdAt: new Date('2023-03-10')
-  }
-];
+// In-memory storage - now empty by default to make it dynamic
+let hospitals: Hospital[] = [];
 
 // Blood inventory storage
 let bloodInventory: BloodInventory[] = [
@@ -186,7 +152,8 @@ const mockDatabaseService = {
   getRegisteredHospitals: async (): Promise<Hospital[]> => {
     // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 300));
-    return [...hospitals];
+    // Return only verified hospitals
+    return [...hospitals].filter(h => h.verified);
   },
   
   // Get pending (unverified) hospital registrations
@@ -205,7 +172,17 @@ const mockDatabaseService = {
       hospital.createdAt = new Date();
     }
     
-    hospitals.push(hospital as Hospital);
+    // Ensure verification status is false for new registrations
+    const newHospital: Hospital = {
+      ...hospital as Hospital,
+      verified: false
+    };
+    
+    // Add to our database
+    hospitals.push(newHospital);
+    
+    console.log('Hospital registered:', newHospital);
+    console.log('Current hospitals:', hospitals);
     
     return { success: true };
   },
@@ -226,6 +203,9 @@ const mockDatabaseService = {
     
     // Update verification status
     hospital.verified = true;
+    
+    console.log('Hospital verified:', hospital);
+    console.log('Current hospitals after verification:', hospitals);
     
     return { 
       success: true,

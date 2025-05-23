@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -56,19 +55,33 @@ const HospitalRegisterForm = () => {
     
     // Create a properly formatted userData object that matches what the register function expects
     const userData = {
+      id: `hospital-${Date.now()}`, // Generate a unique ID for the hospital
       hospitalName: formData.hospitalName.trim(),
       email: formData.email.trim(),
       password: formData.password,
       contactPerson: formData.contactPerson.trim(),
       phoneNumber: formData.phoneNumber.trim(),
-      registrationNumber: formData.registrationNumber.trim(),
+      registrationId: formData.registrationNumber.trim(),
       address: formData.address.trim()
     };
     
     console.log("Sending registration data:", userData); // Debug log
     
     // Call handleSubmit with the properly formatted userData
-    await handleSubmit(formData.email.trim(), formData.password, userData);
+    const success = await handleSubmit(formData.email.trim(), formData.password, userData);
+    
+    if (success) {
+      // Show a success message to the user
+      toast({
+        title: "Registration Submitted",
+        description: "Your hospital registration is pending approval. Please check back later.",
+      });
+      
+      // Redirect to login page after a short delay
+      setTimeout(() => {
+        navigate('/register');
+      }, 2000);
+    }
   };
 
   return (

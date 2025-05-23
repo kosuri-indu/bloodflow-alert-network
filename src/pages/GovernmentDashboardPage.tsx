@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { 
   DropletIcon, 
-  Building2, // Using Building2 instead of HospitalSquare which doesn't exist
+  Building2,
   Hospital,
   CheckCircle2,
   AlertCircle, 
@@ -14,23 +15,34 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import mockDatabaseService, { Hospital as HospitalType } from "@/services/mockDatabase";
 import { format } from 'date-fns';
+import { useAuth } from '@/context/AuthContext';
 
 const GovernmentDashboardPage = () => {
   const [hospitals, setHospitals] = useState<HospitalType[]>([]);
   const [pendingHospitals, setPendingHospitals] = useState<HospitalType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { toast } = useToast();
+  const { approveHospital } = useAuth();
+  
+  const refreshData = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
   
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [allHospitals, unverifiedHospitals] = await Promise.all([
+        // Fetch both verified and unverified hospitals
+        const [verifiedHospitals, unverifiedHospitals] = await Promise.all([
           mockDatabaseService.getRegisteredHospitals(),
           mockDatabaseService.getPendingHospitals()
         ]);
         
-        setHospitals(allHospitals);
+        console.log('Fetched verified hospitals:', verifiedHospitals);
+        console.log('Fetched pending hospitals:', unverifiedHospitals);
+        
+        setHospitals(verifiedHospitals);
         setPendingHospitals(unverifiedHospitals);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -45,28 +57,32 @@ const GovernmentDashboardPage = () => {
     };
     
     fetchData();
-  }, [toast]);
+  }, [toast, refreshTrigger]); // Added refreshTrigger dependency
   
   const handleVerifyHospital = async (hospitalId: string) => {
     try {
-      const result = await mockDatabaseService.verifyHospital(hospitalId);
+      // Call the approveHospital method from useAuth
+      const success = await approveHospital(hospitalId);
       
-      if (result.success) {
-        // Optimistically update the UI
-        setPendingHospitals(prev => prev.filter(h => h.id !== hospitalId));
-        setHospitals(prev => [...prev, prev.find(h => h.id === hospitalId)!]);
+      if (success) {
+        // Find the hospital that was just verified
+        const verifiedHospital = pendingHospitals.find(h => h.id === hospitalId);
         
-        toast({
-          title: "Hospital Verified",
-          description: `${result.hospitalName} has been successfully verified.`,
-        });
-      } else {
-        toast({
-          title: "Verification Failed",
-          description: result.error || "Failed to verify hospital.",
-          variant: "destructive",
-        });
+        if (verifiedHospital) {
+          // Optimistically update the UI - remove from pending and add to verified
+          setPendingHospitals(prev => prev.filter(h => h.id !== hospitalId));
+          setHospitals(prev => [...prev, {...verifiedHospital, verified: true}]);
+          
+          toast({
+            title: "Hospital Verified",
+            description: `${verifiedHospital.name} has been successfully verified.`,
+          });
+        }
       }
+      
+      // Refresh data to ensure UI is in sync with backend
+      refreshData();
+      
     } catch (error) {
       console.error("Verification error:", error);
       toast({

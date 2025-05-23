@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
@@ -60,17 +59,10 @@ const authenticateUser = async (email: string, password: string, userType: UserT
     }
     
     if (userType === 'hospital') {
-      const hospitalId = extraData?.hospitalId;
-      if (!hospitalId) {
-        throw new Error('Hospital ID is required');
-      }
-      
+      // Instead of requiring hospitalId, we'll look up by email
       // Check if hospital exists in our mock database
       const hospitals = await mockDatabaseService.getRegisteredHospitals();
-      const hospital = hospitals.find(h => 
-        h.email.toLowerCase() === email.toLowerCase() && 
-        h.registrationId === hospitalId
-      );
+      const hospital = hospitals.find(h => h.email.toLowerCase() === email.toLowerCase());
       
       if (!hospital) {
         throw new Error('Invalid credentials or hospital not found');
@@ -108,27 +100,31 @@ const registerHospital = async (userData: any) => {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Validate required fields
-    const requiredFields = ['hospitalName', 'email', 'password', 'contactPerson', 'phoneNumber', 'registrationNumber'];
+    const requiredFields = ['hospitalName', 'email', 'password', 'contactPerson', 'phoneNumber', 'registrationId'];
     for (const field of requiredFields) {
       if (!userData[field]) {
         throw new Error(`${field.charAt(0).toUpperCase() + field.slice(1).replace(/([A-Z])/g, ' $1')} is required`);
       }
     }
     
-    // Check if email already exists
-    const hospitals = await mockDatabaseService.getRegisteredHospitals();
-    if (hospitals.some(h => h.email.toLowerCase() === userData.email.toLowerCase())) {
+    // Check if email already exists in ALL hospitals (verified and unverified)
+    const allHospitals = [
+      ...await mockDatabaseService.getRegisteredHospitals(),
+      ...await mockDatabaseService.getPendingHospitals()
+    ];
+    
+    if (allHospitals.some(h => h.email.toLowerCase() === userData.email.toLowerCase())) {
       throw new Error('A hospital with this email already exists');
     }
     
     // Register hospital in mock database with verified=false
     await mockDatabaseService.registerHospital({
-      id: `hospital-${Date.now()}`,
+      id: userData.id || `hospital-${Date.now()}`,
       name: userData.hospitalName,
       email: userData.email,
       contactPerson: userData.contactPerson,
       phone: userData.phoneNumber,
-      registrationId: userData.registrationNumber,
+      registrationId: userData.registrationId,
       address: userData.address || '',
       verified: false,
       createdAt: new Date()

@@ -46,7 +46,7 @@ const Navbar: React.FC = () => {
                     Gov Dashboard
                   </Link>
                 )}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <Button
                     variant="outline" 
                     className="flex items-center gap-2 text-sm"
@@ -71,14 +71,15 @@ const Navbar: React.FC = () => {
                     )}
                   </Button>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={logout}
-                    title="Logout"
-                    className="flex items-center gap-1 px-3"
+                    variant="destructive"
+                    className="flex items-center gap-2"
+                    onClick={() => {
+                      logout();
+                      navigate('/');
+                    }}
                   >
                     <LogOut size={16} />
-                    <span className="ml-1">Logout</span>
+                    <span>Logout</span>
                   </Button>
                 </div>
               </>
@@ -163,7 +164,7 @@ const Navbar: React.FC = () => {
                         }}
                       >
                         <LogOut size={16} />
-                        Logout
+                        <span className="font-medium">Logout</span>
                       </Button>
                     </>
                   ) : (

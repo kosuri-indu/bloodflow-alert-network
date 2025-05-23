@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, User, LogOut, Brain, Hospital } from 'lucide-react';
+import { Menu, User, LogOut, Brain, Hospital, Briefcase } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from '../context/AuthContext';
@@ -31,20 +31,44 @@ const Navbar: React.FC = () => {
             
             {isAuthenticated ? (
               <>
-                <Link 
-                  to="/dashboard" 
-                  className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Dashboard
-                </Link>
+                {userType === 'hospital' ? (
+                  <Link 
+                    to="/dashboard" 
+                    className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Dashboard
+                  </Link>
+                ) : (
+                  <Link 
+                    to="/government-dashboard" 
+                    className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Gov Dashboard
+                  </Link>
+                )}
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline" 
                     className="flex items-center gap-2 text-sm"
-                    onClick={() => navigate('/profile')}
+                    onClick={() => {
+                      if (userType === 'hospital') {
+                        navigate('/profile');
+                      } else {
+                        navigate('/government-dashboard');
+                      }
+                    }}
                   >
-                    <User size={16} />
-                    Hospital Portal
+                    {userType === 'hospital' ? (
+                      <>
+                        <Hospital size={16} />
+                        Hospital Portal
+                      </>
+                    ) : (
+                      <>
+                        <Briefcase size={16} />
+                        Government Portal
+                      </>
+                    )}
                   </Button>
                   <Button
                     variant="ghost"
@@ -60,9 +84,15 @@ const Navbar: React.FC = () => {
               <>
                 <Link 
                   to="/register" 
-                  className="bg-red-600 text-white hover:bg-red-700 px-4 py-2 rounded-md text-sm font-medium"
+                  className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Register
+                  Hospital Portal
+                </Link>
+                <Link 
+                  to="/gov-login" 
+                  className="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-md text-sm font-medium"
+                >
+                  Government Login
                 </Link>
               </>
             )}
@@ -94,18 +124,33 @@ const Navbar: React.FC = () => {
                   </Link>
                   {isAuthenticated ? (
                     <>
-                      <Link 
-                        to="/dashboard" 
-                        className="text-gray-700 hover:text-red-600 py-2 text-base font-medium"
-                      >
-                        Dashboard
-                      </Link>
+                      {userType === 'hospital' ? (
+                        <Link 
+                          to="/dashboard" 
+                          className="text-gray-700 hover:text-red-600 py-2 text-base font-medium"
+                        >
+                          Dashboard
+                        </Link>
+                      ) : (
+                        <Link 
+                          to="/government-dashboard" 
+                          className="text-gray-700 hover:text-red-600 py-2 text-base font-medium"
+                        >
+                          Gov Dashboard
+                        </Link>
+                      )}
                       <Button 
                         variant="outline"
                         className="justify-start"
-                        onClick={() => navigate('/profile')}
+                        onClick={() => {
+                          if (userType === 'hospital') {
+                            navigate('/profile');
+                          } else {
+                            navigate('/government-dashboard');
+                          }
+                        }}
                       >
-                        Hospital Portal
+                        {userType === 'hospital' ? 'Hospital Portal' : 'Government Portal'}
                       </Button>
                       <Button 
                         variant="destructive"
@@ -122,9 +167,15 @@ const Navbar: React.FC = () => {
                     <>
                       <Link 
                         to="/register" 
-                        className="bg-red-600 text-white hover:bg-red-700 px-4 py-2 rounded-md text-base font-medium text-center"
+                        className="text-gray-700 hover:text-red-600 px-4 py-2 rounded-md text-base font-medium text-center"
                       >
-                        Register
+                        Hospital Portal
+                      </Link>
+                      <Link 
+                        to="/gov-login" 
+                        className="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-md text-base font-medium text-center"
+                      >
+                        Government Login
                       </Link>
                     </>
                   )}

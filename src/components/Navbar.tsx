@@ -75,8 +75,10 @@ const Navbar: React.FC = () => {
                     size="icon"
                     onClick={logout}
                     title="Logout"
+                    className="flex items-center gap-1 px-3"
                   >
                     <LogOut size={16} />
+                    <span className="ml-1">Logout</span>
                   </Button>
                 </div>
               </>
@@ -154,12 +156,13 @@ const Navbar: React.FC = () => {
                       </Button>
                       <Button 
                         variant="destructive"
-                        className="justify-start"
+                        className="justify-start gap-2"
                         onClick={() => {
                           logout();
                           navigate('/');
                         }}
                       >
+                        <LogOut size={16} />
                         Logout
                       </Button>
                     </>

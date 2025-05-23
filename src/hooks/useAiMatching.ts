@@ -115,9 +115,9 @@ export function useAiMatching() {
       const processedResult = result as { success: boolean; error?: string };
       
       if (processedResult.success) {
-        // Update local matches state
+        // Update local matches state - fix the hospitalId reference to use donorId
         setMatches(prev => prev.map(match => 
-          match.hospitalId === hospitalId && match.requestId === requestId 
+          match.donorId === hospitalId && match.requestId === requestId 
             ? { ...match, status: 'contacted' } 
             : match
         ));

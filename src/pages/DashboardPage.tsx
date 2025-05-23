@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -105,10 +104,10 @@ const DashboardPage = () => {
         return;
       }
 
-      // Create new inventory item
+      // Create new inventory item - cast rhFactor to the correct type
       const newInventory = {
         bloodType: newInventoryForm.bloodType,
-        rhFactor: newInventoryForm.rhFactor,
+        rhFactor: newInventoryForm.rhFactor as 'positive' | 'negative', // Fix: explicit type cast
         units: newInventoryForm.units,
         hospital: hospitalProfile.name,
         processedDate: new Date(newInventoryForm.processedDate),

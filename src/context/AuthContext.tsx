@@ -295,15 +295,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const logout = () => {
+    console.log('Logout function called'); // Debug log
+    
+    // Clear state
     setCurrentUser(null);
     setUserType(null);
+    
+    // Clear local storage
     localStorage.removeItem('bloodbank_user');
     localStorage.removeItem('bloodbank_user_type');
-    navigate('/');
+    
+    // Clear any other authentication-related storage
+    localStorage.clear();
+    
+    console.log('User logged out, state cleared'); // Debug log
+    
     toast({
       title: "Logged Out",
       description: "You have been successfully logged out.",
     });
+    
+    // Navigate to home page
+    navigate('/');
   };
   
   const value = {

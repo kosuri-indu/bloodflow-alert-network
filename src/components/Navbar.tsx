@@ -10,6 +10,12 @@ const Navbar: React.FC = () => {
   const { isAuthenticated, currentUser, userType, logout } = useAuth();
   const navigate = useNavigate();
 
+  const handleLogout = () => {
+    console.log('Logout button clicked'); // Debug log
+    logout();
+    navigate('/');
+  };
+
   return (
     <nav className="bg-white shadow-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -52,7 +58,7 @@ const Navbar: React.FC = () => {
                     className="flex items-center gap-2 text-sm"
                     onClick={() => {
                       if (userType === 'hospital') {
-                        navigate('/profile');
+                        navigate('/dashboard');
                       } else {
                         navigate('/government-dashboard');
                       }
@@ -72,11 +78,8 @@ const Navbar: React.FC = () => {
                   </Button>
                   <Button
                     variant="destructive"
-                    className="flex items-center gap-2"
-                    onClick={() => {
-                      logout();
-                      navigate('/');
-                    }}
+                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700"
+                    onClick={handleLogout}
                   >
                     <LogOut size={16} />
                     <span>Logout</span>
@@ -147,7 +150,7 @@ const Navbar: React.FC = () => {
                         className="justify-start"
                         onClick={() => {
                           if (userType === 'hospital') {
-                            navigate('/profile');
+                            navigate('/dashboard');
                           } else {
                             navigate('/government-dashboard');
                           }
@@ -157,11 +160,8 @@ const Navbar: React.FC = () => {
                       </Button>
                       <Button 
                         variant="destructive"
-                        className="justify-start gap-2"
-                        onClick={() => {
-                          logout();
-                          navigate('/');
-                        }}
+                        className="justify-start gap-2 bg-red-600 hover:bg-red-700"
+                        onClick={handleLogout}
                       >
                         <LogOut size={16} />
                         <span className="font-medium">Logout</span>

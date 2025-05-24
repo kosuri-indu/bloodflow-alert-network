@@ -11,9 +11,10 @@ const Navbar: React.FC = () => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    console.log('Logout button clicked'); // Debug log
+    console.log('Logout button clicked - clearing all auth data');
     logout();
-    navigate('/');
+    // Force navigation to home
+    window.location.href = '/';
   };
 
   return (
@@ -27,7 +28,7 @@ const Navbar: React.FC = () => {
             </Link>
           </div>
           
-          <div className="hidden md:flex items-center space-x-6">
+          <div className="hidden md:flex items-center space-x-4">
             <Link 
               to="/" 
               className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
@@ -52,39 +53,25 @@ const Navbar: React.FC = () => {
                     Gov Dashboard
                   </Link>
                 )}
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline" 
-                    className="flex items-center gap-2 text-sm"
-                    onClick={() => {
-                      if (userType === 'hospital') {
-                        navigate('/dashboard');
-                      } else {
-                        navigate('/government-dashboard');
-                      }
-                    }}
-                  >
-                    {userType === 'hospital' ? (
-                      <>
-                        <Hospital size={16} />
-                        Hospital Portal
-                      </>
-                    ) : (
-                      <>
-                        <Briefcase size={16} />
-                        Government Portal
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700"
-                    onClick={handleLogout}
-                  >
-                    <LogOut size={16} />
-                    <span>Logout</span>
-                  </Button>
+                
+                {/* User info display */}
+                <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-md">
+                  <User size={16} className="text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">
+                    {userType === 'hospital' ? currentUser?.hospitalName : currentUser?.name}
+                  </span>
                 </div>
+                
+                {/* LOGOUT BUTTON - Made more prominent */}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2"
+                  onClick={handleLogout}
+                >
+                  <LogOut size={16} />
+                  Logout
+                </Button>
               </>
             ) : (
               <>
@@ -104,6 +91,7 @@ const Navbar: React.FC = () => {
             )}
           </div>
 
+          {/* Mobile menu */}
           <div className="md:hidden flex items-center">
             <Sheet>
               <SheetTrigger asChild>
@@ -114,11 +102,15 @@ const Navbar: React.FC = () => {
               <SheetContent side="right">
                 <div className="flex flex-col space-y-4 mt-6">
                   {isAuthenticated && (
-                    <div className="border-b pb-4 mb-2">
-                      <p className="font-medium text-red-600">
-                        {userType === 'hospital' ? currentUser?.hospitalName : `Hello, ${currentUser?.name}`}
-                      </p>
+                    <div className="border-b pb-4 mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <User size={16} className="text-gray-600" />
+                        <p className="font-medium text-red-600">
+                          {userType === 'hospital' ? currentUser?.hospitalName : currentUser?.name}
+                        </p>
+                      </div>
                       <p className="text-sm text-gray-500">{currentUser?.email}</p>
+                      <p className="text-xs text-blue-600 capitalize">{userType} User</p>
                     </div>
                   )}
                 
@@ -128,6 +120,7 @@ const Navbar: React.FC = () => {
                   >
                     Home
                   </Link>
+                  
                   {isAuthenticated ? (
                     <>
                       {userType === 'hospital' ? (
@@ -135,36 +128,25 @@ const Navbar: React.FC = () => {
                           to="/dashboard" 
                           className="text-gray-700 hover:text-red-600 py-2 text-base font-medium"
                         >
-                          Dashboard
+                          Hospital Dashboard
                         </Link>
                       ) : (
                         <Link 
                           to="/government-dashboard" 
                           className="text-gray-700 hover:text-red-600 py-2 text-base font-medium"
                         >
-                          Gov Dashboard
+                          Government Dashboard
                         </Link>
                       )}
-                      <Button 
-                        variant="outline"
-                        className="justify-start"
-                        onClick={() => {
-                          if (userType === 'hospital') {
-                            navigate('/dashboard');
-                          } else {
-                            navigate('/government-dashboard');
-                          }
-                        }}
-                      >
-                        {userType === 'hospital' ? 'Hospital Portal' : 'Government Portal'}
-                      </Button>
+                      
+                      {/* MOBILE LOGOUT BUTTON - Made very prominent */}
                       <Button 
                         variant="destructive"
-                        className="justify-start gap-2 bg-red-600 hover:bg-red-700"
+                        className="w-full justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 mt-4"
                         onClick={handleLogout}
                       >
-                        <LogOut size={16} />
-                        <span className="font-medium">Logout</span>
+                        <LogOut size={18} />
+                        <span className="text-base">LOGOUT</span>
                       </Button>
                     </>
                   ) : (

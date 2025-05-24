@@ -150,9 +150,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUser = localStorage.getItem('bloodbank_user');
     const storedUserType = localStorage.getItem('bloodbank_user_type');
     
+    console.log('Checking stored auth:', { storedUser, storedUserType });
+    
     if (storedUser && (storedUserType === 'hospital' || storedUserType === 'government')) {
-      setCurrentUser(JSON.parse(storedUser));
-      setUserType(storedUserType as UserType);
+      try {
+        const user = JSON.parse(storedUser);
+        setCurrentUser(user);
+        setUserType(storedUserType as UserType);
+        console.log('Auth restored:', { user, userType: storedUserType });
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        // Clear corrupted data
+        localStorage.removeItem('bloodbank_user');
+        localStorage.removeItem('bloodbank_user_type');
+      }
     }
   }, []);
   
@@ -295,39 +306,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const logout = () => {
-    console.log('Logout function called'); // Debug log
+    console.log('Logout function called - clearing all data');
     
-    // Clear state
+    // Clear state immediately
     setCurrentUser(null);
     setUserType(null);
     
-    // Clear local storage
+    // Clear ALL localStorage data
+    localStorage.clear();
+    
+    // Also specifically clear our auth keys
     localStorage.removeItem('bloodbank_user');
     localStorage.removeItem('bloodbank_user_type');
     
-    // Clear any other authentication-related storage
-    localStorage.clear();
-    
-    console.log('User logged out, state cleared'); // Debug log
+    console.log('All auth data cleared');
     
     toast({
       title: "Logged Out",
       description: "You have been successfully logged out.",
     });
     
-    // Navigate to home page
-    navigate('/');
+    // Force a page reload to ensure clean state
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 500);
   };
   
   const value = {
     currentUser,
     userType,
-    isAuthenticated: !!currentUser,
+    isAuthenticated: !!currentUser && !!userType,
     login,
     logout,
     register,
     approveHospital,
   };
+  
+  console.log('Auth context state:', { 
+    isAuthenticated: !!currentUser && !!userType, 
+    userType, 
+    currentUser: currentUser?.name || currentUser?.hospitalName 
+  });
   
   return (
     <AuthContext.Provider value={value}>

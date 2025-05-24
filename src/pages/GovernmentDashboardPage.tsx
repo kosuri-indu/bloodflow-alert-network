@@ -10,7 +10,9 @@ import {
   Hospital,
   CheckCircle2,
   AlertCircle, 
-  ClipboardList
+  ClipboardList,
+  LogOut,
+  User
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import mockDatabaseService, { Hospital as HospitalType } from "@/services/mockDatabase";
@@ -23,7 +25,7 @@ const GovernmentDashboardPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { toast } = useToast();
-  const { approveHospital } = useAuth();
+  const { approveHospital, logout, currentUser } = useAuth();
   
   const refreshData = () => {
     setRefreshTrigger(prev => prev + 1);
@@ -93,16 +95,46 @@ const GovernmentDashboardPage = () => {
     }
   };
 
+  const handleLogout = () => {
+    console.log('Government Dashboard - LOGOUT BUTTON CLICKED');
+    logout();
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-6">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-blue-600">
-            Government Health Authority Dashboard
-          </h1>
-          <p className="text-gray-500">
-            Manage hospital registrations and ensure compliance.
-          </p>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-blue-600">
+                Government Health Authority Dashboard
+              </h1>
+              <p className="text-gray-500">
+                Manage hospital registrations and ensure compliance.
+              </p>
+            </div>
+            
+            {/* User Info and Logout Button */}
+            <div className="flex flex-col items-end gap-3">
+              <div className="flex items-center gap-2 px-3 py-1 bg-white rounded-md shadow-sm border">
+                <User size={16} className="text-gray-600" />
+                <span className="text-sm font-medium text-gray-700">
+                  {currentUser?.name}
+                </span>
+              </div>
+              
+              {/* PROMINENT LOGOUT BUTTON */}
+              <Button
+                variant="destructive"
+                size="lg"
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 border-2 border-red-800 shadow-lg"
+                onClick={handleLogout}
+              >
+                <LogOut size={20} />
+                <span className="text-lg">LOGOUT</span>
+              </Button>
+            </div>
+          </div>
         </div>
         
         <Tabs defaultValue="pending" className="w-full">

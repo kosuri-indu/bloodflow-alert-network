@@ -150,14 +150,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUser = localStorage.getItem('bloodbank_user');
     const storedUserType = localStorage.getItem('bloodbank_user_type');
     
-    console.log('Checking stored auth:', { storedUser, storedUserType });
+    console.log('AuthContext - Checking stored auth:', { storedUser, storedUserType });
     
     if (storedUser && (storedUserType === 'hospital' || storedUserType === 'government')) {
       try {
         const user = JSON.parse(storedUser);
         setCurrentUser(user);
         setUserType(storedUserType as UserType);
-        console.log('Auth restored:', { user, userType: storedUserType });
+        console.log('AuthContext - Auth restored:', { user, userType: storedUserType });
       } catch (error) {
         console.error('Error parsing stored user:', error);
         // Clear corrupted data
@@ -306,30 +306,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const logout = () => {
-    console.log('Logout function called - clearing all data');
+    console.log('AuthContext - LOGOUT CALLED - Starting cleanup process');
     
-    // Clear state immediately
+    // Clear state FIRST
     setCurrentUser(null);
     setUserType(null);
     
-    // Clear ALL localStorage data
-    localStorage.clear();
-    
-    // Also specifically clear our auth keys
-    localStorage.removeItem('bloodbank_user');
-    localStorage.removeItem('bloodbank_user_type');
-    
-    console.log('All auth data cleared');
-    
-    toast({
-      title: "Logged Out",
-      description: "You have been successfully logged out.",
+    // Clear ALL possible localStorage keys
+    const keysToRemove = ['bloodbank_user', 'bloodbank_user_type'];
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+      console.log(`AuthContext - Removed localStorage key: ${key}`);
     });
     
-    // Force a page reload to ensure clean state
+    // Also clear entire localStorage to be safe
+    try {
+      localStorage.clear();
+      console.log('AuthContext - Cleared entire localStorage');
+    } catch (error) {
+      console.error('Error clearing localStorage:', error);
+    }
+    
+    console.log('AuthContext - All auth data cleared, showing toast');
+    
+    toast({
+      title: "Logged Out Successfully",
+      description: "You have been logged out of the system.",
+    });
+    
+    // Force navigation and reload
+    console.log('AuthContext - Forcing navigation to home page');
     setTimeout(() => {
       window.location.href = '/';
-    }, 500);
+    }, 100);
   };
   
   const value = {
@@ -342,7 +351,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     approveHospital,
   };
   
-  console.log('Auth context state:', { 
+  console.log('AuthContext - Current state:', { 
     isAuthenticated: !!currentUser && !!userType, 
     userType, 
     currentUser: currentUser?.name || currentUser?.hospitalName 

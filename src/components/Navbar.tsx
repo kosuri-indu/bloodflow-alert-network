@@ -10,11 +10,12 @@ const Navbar: React.FC = () => {
   const { isAuthenticated, currentUser, userType, logout } = useAuth();
   const navigate = useNavigate();
 
+  // Debug logging
+  console.log('Navbar - Auth state:', { isAuthenticated, userType, currentUser: currentUser?.name });
+
   const handleLogout = () => {
-    console.log('Logout button clicked - clearing all auth data');
+    console.log('LOGOUT BUTTON CLICKED - Starting logout process');
     logout();
-    // Force navigation to home
-    window.location.href = '/';
   };
 
   return (
@@ -35,6 +36,11 @@ const Navbar: React.FC = () => {
             >
               Home
             </Link>
+            
+            {/* DEBUG: Show current auth state */}
+            <div className="text-xs bg-yellow-100 px-2 py-1 rounded">
+              Auth: {isAuthenticated ? 'YES' : 'NO'} | Type: {userType || 'NONE'}
+            </div>
             
             {isAuthenticated ? (
               <>
@@ -62,15 +68,15 @@ const Navbar: React.FC = () => {
                   </span>
                 </div>
                 
-                {/* LOGOUT BUTTON - Made more prominent */}
+                {/* VERY PROMINENT LOGOUT BUTTON */}
                 <Button
                   variant="destructive"
-                  size="sm"
-                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2"
+                  size="lg"
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 border-2 border-red-800 shadow-lg"
                   onClick={handleLogout}
                 >
-                  <LogOut size={16} />
-                  Logout
+                  <LogOut size={20} />
+                  <span className="text-lg">LOGOUT</span>
                 </Button>
               </>
             ) : (
@@ -101,6 +107,11 @@ const Navbar: React.FC = () => {
               </SheetTrigger>
               <SheetContent side="right">
                 <div className="flex flex-col space-y-4 mt-6">
+                  {/* DEBUG INFO FOR MOBILE */}
+                  <div className="text-xs bg-yellow-100 px-2 py-1 rounded mb-4">
+                    Mobile Auth: {isAuthenticated ? 'YES' : 'NO'} | Type: {userType || 'NONE'}
+                  </div>
+
                   {isAuthenticated && (
                     <div className="border-b pb-4 mb-4">
                       <div className="flex items-center gap-2 mb-2">
@@ -139,14 +150,15 @@ const Navbar: React.FC = () => {
                         </Link>
                       )}
                       
-                      {/* MOBILE LOGOUT BUTTON - Made very prominent */}
+                      {/* MOBILE LOGOUT BUTTON - SUPER PROMINENT */}
                       <Button 
                         variant="destructive"
-                        className="w-full justify-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold py-3 mt-4"
+                        size="lg"
+                        className="w-full justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-bold py-4 mt-6 border-2 border-red-800 shadow-lg"
                         onClick={handleLogout}
                       >
-                        <LogOut size={18} />
-                        <span className="text-base">LOGOUT</span>
+                        <LogOut size={24} />
+                        <span className="text-xl">LOGOUT NOW</span>
                       </Button>
                     </>
                   ) : (

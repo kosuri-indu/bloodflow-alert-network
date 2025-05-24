@@ -12,7 +12,9 @@ import {
   AlertCircle, 
   ClipboardList,
   LogOut,
-  User
+  User,
+  RefreshCw,
+  Trash2
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import mockDatabaseService, { Hospital as HospitalType } from "@/services/mockDatabase";
@@ -23,55 +25,48 @@ const GovernmentDashboardPage = () => {
   const [hospitals, setHospitals] = useState<HospitalType[]>([]);
   const [pendingHospitals, setPendingHospitals] = useState<HospitalType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const { toast } = useToast();
-  const { approveHospital, logout, currentUser } = useAuth();
+  const { approveHospital, logout, currentUser, refreshData } = useAuth();
   
-  const refreshData = () => {
-    setRefreshTrigger(prev => prev + 1);
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      console.log('Government Dashboard - Fetching fresh data from persistent storage');
+      
+      const [verifiedHospitals, unverifiedHospitals] = await Promise.all([
+        mockDatabaseService.getRegisteredHospitals(),
+        mockDatabaseService.getPendingHospitals()
+      ]);
+      
+      console.log('Fetched verified hospitals:', verifiedHospitals);
+      console.log('Fetched pending hospitals:', unverifiedHospitals);
+      
+      setHospitals(verifiedHospitals);
+      setPendingHospitals(unverifiedHospitals);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch data for the dashboard.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // Fetch both verified and unverified hospitals
-        const [verifiedHospitals, unverifiedHospitals] = await Promise.all([
-          mockDatabaseService.getRegisteredHospitals(),
-          mockDatabaseService.getPendingHospitals()
-        ]);
-        
-        console.log('Fetched verified hospitals:', verifiedHospitals);
-        console.log('Fetched pending hospitals:', unverifiedHospitals);
-        
-        setHospitals(verifiedHospitals);
-        setPendingHospitals(unverifiedHospitals);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch data for the dashboard.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
     fetchData();
-  }, [toast, refreshTrigger]); // Added refreshTrigger dependency
+  }, [toast]);
   
   const handleVerifyHospital = async (hospitalId: string) => {
     try {
-      // Call the approveHospital method from useAuth
       const success = await approveHospital(hospitalId);
       
       if (success) {
-        // Find the hospital that was just verified
         const verifiedHospital = pendingHospitals.find(h => h.id === hospitalId);
         
         if (verifiedHospital) {
-          // Optimistically update the UI - remove from pending and add to verified
           setPendingHospitals(prev => prev.filter(h => h.id !== hospitalId));
           setHospitals(prev => [...prev, {...verifiedHospital, verified: true}]);
           
@@ -82,8 +77,8 @@ const GovernmentDashboardPage = () => {
         }
       }
       
-      // Refresh data to ensure UI is in sync with backend
-      refreshData();
+      // Refresh data to ensure UI is in sync
+      await fetchData();
       
     } catch (error) {
       console.error("Verification error:", error);
@@ -93,6 +88,47 @@ const GovernmentDashboardPage = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleDeleteHospital = async (hospitalId: string, hospitalName: string) => {
+    try {
+      const result = await mockDatabaseService.deleteHospital(hospitalId);
+      
+      if (result.success) {
+        setPendingHospitals(prev => prev.filter(h => h.id !== hospitalId));
+        setHospitals(prev => prev.filter(h => h.id !== hospitalId));
+        
+        toast({
+          title: "Hospital Deleted",
+          description: `${hospitalName} has been removed from the system.`,
+        });
+        
+        await fetchData();
+      } else {
+        toast({
+          title: "Delete Failed",
+          description: result.error || "Failed to delete hospital.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Delete error:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred during deletion.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRefresh = async () => {
+    console.log('Manual refresh triggered');
+    refreshData();
+    await fetchData();
+    toast({
+      title: "Data Refreshed",
+      description: "All data has been refreshed from storage.",
+    });
   };
 
   const handleLogout = () => {
@@ -114,7 +150,7 @@ const GovernmentDashboardPage = () => {
               </p>
             </div>
             
-            {/* User Info and Logout Button */}
+            {/* User Info and Controls */}
             <div className="flex flex-col items-end gap-3">
               <div className="flex items-center gap-2 px-3 py-1 bg-white rounded-md shadow-sm border">
                 <User size={16} className="text-gray-600" />
@@ -123,16 +159,30 @@ const GovernmentDashboardPage = () => {
                 </span>
               </div>
               
-              {/* PROMINENT LOGOUT BUTTON */}
-              <Button
-                variant="destructive"
-                size="lg"
-                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 border-2 border-red-800 shadow-lg"
-                onClick={handleLogout}
-              >
-                <LogOut size={20} />
-                <span className="text-lg">LOGOUT</span>
-              </Button>
+              <div className="flex gap-2">
+                {/* Refresh Button */}
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="flex items-center gap-2"
+                  onClick={handleRefresh}
+                  disabled={isLoading}
+                >
+                  <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
+                  Refresh
+                </Button>
+                
+                {/* PROMINENT LOGOUT BUTTON */}
+                <Button
+                  variant="destructive"
+                  size="lg"
+                  className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 border-2 border-red-800 shadow-lg"
+                  onClick={handleLogout}
+                >
+                  <LogOut size={20} />
+                  <span className="text-lg">LOGOUT</span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -140,10 +190,10 @@ const GovernmentDashboardPage = () => {
         <Tabs defaultValue="pending" className="w-full">
           <TabsList className="w-full bg-white rounded-md shadow-sm flex justify-between p-2">
             <TabsTrigger value="pending" className="data-[state=active]:bg-gray-100 rounded-md px-4 py-2 font-medium">
-              Pending Registrations
+              Pending Registrations ({pendingHospitals.length})
             </TabsTrigger>
             <TabsTrigger value="all" className="data-[state=active]:bg-gray-100 rounded-md px-4 py-2 font-medium">
-              All Hospitals
+              All Hospitals ({hospitals.length})
             </TabsTrigger>
           </TabsList>
           
@@ -155,7 +205,7 @@ const GovernmentDashboardPage = () => {
                   Pending Hospital Registrations
                 </CardTitle>
                 <CardDescription>
-                  Review and verify new hospital registrations.
+                  Review and verify new hospital registrations. Data persists across sessions.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -195,13 +245,21 @@ const GovernmentDashboardPage = () => {
                             Registered on: {format(new Date(hospital.createdAt), 'MMM d, yyyy')}
                           </p>
                         </CardContent>
-                        <div className="p-4 flex justify-end">
+                        <div className="p-4 flex justify-between gap-2">
                           <Button 
                             variant="outline"
                             onClick={() => handleVerifyHospital(hospital.id)}
+                            className="flex-1"
                           >
                             <CheckCircle2 className="mr-2 h-4 w-4" />
-                            Verify Hospital
+                            Verify
+                          </Button>
+                          <Button 
+                            variant="destructive"
+                            onClick={() => handleDeleteHospital(hospital.id, hospital.name)}
+                            size="sm"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </Card>
@@ -224,7 +282,7 @@ const GovernmentDashboardPage = () => {
                   All Registered Hospitals
                 </CardTitle>
                 <CardDescription>
-                  View all registered hospitals in the system.
+                  View all verified hospitals in the system. Changes persist across sessions.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -260,9 +318,18 @@ const GovernmentDashboardPage = () => {
                               {hospital.email}
                             </a>
                           </p>
-                          <Badge variant="outline" className="mt-2">
-                            Verified
-                          </Badge>
+                          <div className="flex justify-between items-center mt-3">
+                            <Badge variant="outline" className="text-green-600 border-green-600">
+                              Verified
+                            </Badge>
+                            <Button 
+                              variant="destructive"
+                              onClick={() => handleDeleteHospital(hospital.id, hospital.name)}
+                              size="sm"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </CardContent>
                       </Card>
                     ))}

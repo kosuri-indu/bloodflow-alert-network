@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
@@ -23,6 +24,7 @@ interface AuthContextType {
   logout: () => void;
   register: (userData: any, userType: UserType) => Promise<boolean>;
   approveHospital: (hospitalId: string) => Promise<boolean>;
+  refreshData: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,16 +32,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // Internal functions to handle database operations
 const authenticateUser = async (email: string, password: string, userType: UserType, extraData?: any) => {
   try {
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    // For demo purposes, accept any non-empty email/password
     if (!email || !password) {
       throw new Error('Email and password are required');
     }
 
     if (userType === 'government') {
-      // Check if government credentials are valid (using mock hardcoded credentials for demo)
       const isValidGovernment = email === 'admin@health.gov' && password === 'admin123';
       
       if (!isValidGovernment) {
@@ -59,8 +58,6 @@ const authenticateUser = async (email: string, password: string, userType: UserT
     }
     
     if (userType === 'hospital') {
-      // Instead of requiring hospitalId, we'll look up by email
-      // Check if hospital exists in our mock database
       const hospitals = await mockDatabaseService.getRegisteredHospitals();
       const hospital = hospitals.find(h => h.email.toLowerCase() === email.toLowerCase());
       
@@ -96,10 +93,8 @@ const authenticateUser = async (email: string, password: string, userType: UserT
 
 const registerHospital = async (userData: any) => {
   try {
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Validate required fields
     const requiredFields = ['hospitalName', 'email', 'password', 'contactPerson', 'phoneNumber', 'registrationId'];
     for (const field of requiredFields) {
       if (!userData[field]) {
@@ -108,16 +103,13 @@ const registerHospital = async (userData: any) => {
     }
     
     // Check if email already exists in ALL hospitals (verified and unverified)
-    const allHospitals = [
-      ...await mockDatabaseService.getRegisteredHospitals(),
-      ...await mockDatabaseService.getPendingHospitals()
-    ];
+    const allData = await mockDatabaseService.getAllData();
     
-    if (allHospitals.some(h => h.email.toLowerCase() === userData.email.toLowerCase())) {
+    if (allData.hospitals.some(h => h.email.toLowerCase() === userData.email.toLowerCase())) {
       throw new Error('A hospital with this email already exists');
     }
     
-    // Register hospital in mock database with verified=false
+    // Register hospital in database with verified=false
     await mockDatabaseService.registerHospital({
       id: userData.id || `hospital-${Date.now()}`,
       name: userData.hospitalName,
@@ -144,6 +136,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [userType, setUserType] = useState<UserType>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Force data refresh function
+  const refreshData = () => {
+    setRefreshTrigger(prev => prev + 1);
+    console.log('AuthContext - Data refresh triggered');
+  };
   
   // Check for stored authentication on mount
   useEffect(() => {
@@ -160,7 +159,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('AuthContext - Auth restored:', { user, userType: storedUserType });
       } catch (error) {
         console.error('Error parsing stored user:', error);
-        // Clear corrupted data
         localStorage.removeItem('bloodbank_user');
         localStorage.removeItem('bloodbank_user_type');
       }
@@ -204,6 +202,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ? `Welcome back, ${result.user.hospitalName}!` 
           : "Welcome, Government Health Official",
       });
+      
+      // Trigger data refresh
+      refreshData();
       
       // Redirect to appropriate dashboard
       if (type === 'government') {
@@ -252,6 +253,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Your hospital registration is pending verification by government health officials. We'll notify you once it's approved.",
       });
       
+      // Trigger data refresh
+      refreshData();
+      
       return true;
     } catch (error) {
       console.error('Registration error:', error);
@@ -264,7 +268,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  // New function for government officials to approve hospital registrations
+  // Government officials to approve hospital registrations
   const approveHospital = async (hospitalId: string): Promise<boolean> => {
     try {
       if (userType !== 'government') {
@@ -276,7 +280,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // Update hospital verification status in mock database
       const result = await mockDatabaseService.verifyHospital(hospitalId);
       
       if (!result.success) {
@@ -293,6 +296,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: `Hospital ${result.hospitalName} has been verified successfully.`,
       });
       
+      // Trigger data refresh
+      refreshData();
+      
       return true;
     } catch (error) {
       console.error('Hospital approval error:', error);
@@ -308,33 +314,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     console.log('AuthContext - LOGOUT CALLED - Starting cleanup process');
     
-    // Clear state FIRST
     setCurrentUser(null);
     setUserType(null);
     
-    // Clear ALL possible localStorage keys
     const keysToRemove = ['bloodbank_user', 'bloodbank_user_type'];
     keysToRemove.forEach(key => {
       localStorage.removeItem(key);
       console.log(`AuthContext - Removed localStorage key: ${key}`);
     });
     
-    // Also clear entire localStorage to be safe
-    try {
-      localStorage.clear();
-      console.log('AuthContext - Cleared entire localStorage');
-    } catch (error) {
-      console.error('Error clearing localStorage:', error);
-    }
-    
-    console.log('AuthContext - All auth data cleared, showing toast');
-    
     toast({
       title: "Logged Out Successfully",
       description: "You have been logged out of the system.",
     });
     
-    // Force navigation and reload
     console.log('AuthContext - Forcing navigation to home page');
     setTimeout(() => {
       window.location.href = '/';
@@ -349,12 +342,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     register,
     approveHospital,
+    refreshData,
   };
   
   console.log('AuthContext - Current state:', { 
     isAuthenticated: !!currentUser && !!userType, 
     userType, 
-    currentUser: currentUser?.name || currentUser?.hospitalName 
+    currentUser: currentUser?.name || currentUser?.hospitalName,
+    refreshTrigger
   });
   
   return (

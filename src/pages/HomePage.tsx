@@ -1,4 +1,3 @@
-
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,7 @@ const HomePage = () => {
   const totalUnits = bloodInventory?.reduce((sum, item) => sum + item.units, 0) || 0;
   const totalHospitals = hospitals?.length || 0;
   const criticalRequests = bloodRequests?.filter(req => req.urgency === 'critical').length || 0;
-  const pendingRequests = bloodRequests?.filter(req => req.status === 'pending').length || 0;
+  const pendingRequests = bloodRequests?.filter(req => req.urgency === 'routine' || req.urgency === 'urgent' || req.urgency === 'critical').length || 0;
 
   // Calculate blood type availability
   const bloodTypeStats = bloodInventory?.reduce((acc, item) => {

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,8 @@ import {
   Clock,
   LogOut,
   User,
-  RefreshCw
+  RefreshCw,
+  Clipboard
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from "../context/AuthContext";
@@ -60,6 +62,29 @@ const DashboardPage = () => {
   const handleLogout = () => {
     console.log('Hospital Dashboard - LOGOUT CLICKED');
     logout();
+  };
+
+  const getExpiryStatus = (expirationDate: Date) => {
+    const daysUntilExpiry = differenceInDays(new Date(expirationDate), new Date());
+    
+    if (daysUntilExpiry < 0) {
+      return { color: 'text-red-600', message: 'Expired' };
+    } else if (daysUntilExpiry <= 3) {
+      return { color: 'text-red-600', message: `${daysUntilExpiry} days left` };
+    } else if (daysUntilExpiry <= 7) {
+      return { color: 'text-amber-600', message: `${daysUntilExpiry} days left` };
+    } else {
+      return { color: 'text-green-600', message: `${daysUntilExpiry} days left` };
+    }
+  };
+
+  const handleSpecialAttributesChange = (attribute: string, checked: boolean) => {
+    setNewInventoryForm(prev => ({
+      ...prev,
+      specialAttributes: checked 
+        ? [...prev.specialAttributes, attribute]
+        : prev.specialAttributes.filter(attr => attr !== attribute)
+    }));
   };
 
   const refreshAllData = async () => {
@@ -299,7 +324,7 @@ const DashboardPage = () => {
               <Card>
                 <CardContent className="p-4 flex flex-col items-center justify-center">
                   <div className="rounded-full bg-blue-100 p-3 mb-2">
-                    <ClipboardList className="h-6 w-6 text-blue-600" />
+                    <Clipboard className="h-6 w-6 text-blue-600" />
                   </div>
                   <p className="text-sm text-gray-500">Active Requests</p>
                   <p className="text-2xl font-bold">{hospitalStats.activeRequests}</p>

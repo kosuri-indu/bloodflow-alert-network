@@ -10,7 +10,9 @@ import {
   TrendingUp, 
   Brain,
   Plus,
-  Clock
+  Clock,
+  LogOut,
+  User
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import mockDatabaseService, { BloodRequest, BloodInventory } from "@/services/mockDatabase";
@@ -30,7 +32,7 @@ const DashboardPage = () => {
   const [hospitalProfile, setHospitalProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
   const [isAddingInventory, setIsAddingInventory] = useState(false);
 
   // New inventory form state
@@ -43,6 +45,11 @@ const DashboardPage = () => {
     donorAge: 30,
     specialAttributes: [] as string[]
   });
+
+  const handleLogout = () => {
+    console.log('Hospital Dashboard - LOGOUT CLICKED');
+    logout();
+  };
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -193,13 +200,36 @@ const DashboardPage = () => {
             </p>
           </div>
           
-          <div className="flex gap-2 mt-4 md:mt-0">
-            <Button className="bg-purple-600 hover:bg-purple-700" onClick={() => setIsAddingInventory(true)}>
-              <Plus className="h-4 w-4 mr-1" /> Add Inventory
-            </Button>
-            <Button className="bg-red-600 hover:bg-red-700" onClick={handleCreateBloodRequest}>
-              Create Blood Request
-            </Button>
+          <div className="flex items-center gap-4 mt-4 md:mt-0">
+            {/* User Info */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-white border rounded-lg shadow-sm">
+              <User size={16} className="text-gray-600" />
+              <div className="text-sm">
+                <p className="font-medium text-gray-700">{currentUser?.hospitalName}</p>
+                <p className="text-xs text-gray-500">{currentUser?.email}</p>
+              </div>
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <Button className="bg-purple-600 hover:bg-purple-700" onClick={() => setIsAddingInventory(true)}>
+                <Plus className="h-4 w-4 mr-1" /> Add Inventory
+              </Button>
+              <Button className="bg-red-600 hover:bg-red-700" onClick={handleCreateBloodRequest}>
+                Create Blood Request
+              </Button>
+              
+              {/* Logout Button */}
+              <Button
+                variant="destructive"
+                size="lg"
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-4 py-2 border-2 border-red-800 shadow-lg"
+                onClick={handleLogout}
+              >
+                <LogOut size={18} />
+                <span>LOGOUT</span>
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -216,10 +246,8 @@ const DashboardPage = () => {
                     <Brain className="h-6 w-6 text-purple-600" />
                   </div>
                   <p className="text-sm text-gray-500">AI Matches</p>
-                  {/* Using matchPercentage instead of matchCount since matchCount doesn't exist in the BloodRequest type */}
                   <p className="text-2xl font-bold">
                     {bloodRequests.reduce((total, req) => {
-                      // If matchPercentage is over 70%, consider it a match
                       return req.matchPercentage > 70 ? total + 1 : total;
                     }, 0)}
                   </p>

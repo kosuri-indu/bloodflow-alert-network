@@ -97,56 +97,248 @@ const initializeDefaultData = () => {
   const isInitialized = localStorage.getItem(STORAGE_KEYS.INITIALIZED);
   
   if (!isInitialized) {
-    console.log('Initializing default data...');
+    console.log('Initializing enhanced sample data...');
     
-    // Initialize with sample data
+    // Enhanced sample hospitals for better matching
+    const defaultHospitals: Hospital[] = [
+      {
+        id: 'hospital-central',
+        name: 'Central General Hospital',
+        email: 'admin@central.hospital',
+        contactPerson: 'Dr. Sarah Williams',
+        phone: '555-0101',
+        registrationId: 'HOS-001',
+        address: '123 Medical Center Dr, Downtown',
+        verified: true,
+        createdAt: new Date('2023-01-15')
+      },
+      {
+        id: 'hospital-mercy',
+        name: 'Mercy Medical Center',
+        email: 'blood@mercy.hospital',
+        contactPerson: 'Dr. Michael Chen',
+        phone: '555-0102',
+        registrationId: 'HOS-002',
+        address: '456 Healthcare Ave, Midtown',
+        verified: true,
+        createdAt: new Date('2023-02-20')
+      },
+      {
+        id: 'hospital-regional',
+        name: 'Regional Emergency Hospital',
+        email: 'emergency@regional.hospital',
+        contactPerson: 'Dr. Emily Rodriguez',
+        phone: '555-0103',
+        registrationId: 'HOS-003',
+        address: '789 Emergency Blvd, Northside',
+        verified: true,
+        createdAt: new Date('2023-03-10')
+      },
+      {
+        id: 'hospital-childrens',
+        name: 'Children\'s Specialty Hospital',
+        email: 'pediatric@childrens.hospital',
+        contactPerson: 'Dr. David Kumar',
+        phone: '555-0104',
+        registrationId: 'HOS-004',
+        address: '321 Kids Way, Westside',
+        verified: true,
+        createdAt: new Date('2023-04-05')
+      }
+    ];
+
+    // Enhanced blood inventory with diverse blood types and attributes
     const defaultInventory: BloodInventory[] = [
       {
-        id: 'inv-123',
+        id: 'inv-001',
+        bloodType: 'O',
+        rhFactor: 'negative',
+        units: 45,
+        hospital: 'Central General Hospital',
+        processedDate: new Date('2024-11-20'),
+        expirationDate: new Date('2025-01-02'),
+        donorAge: 32,
+        specialAttributes: ['leukoreduced', 'cmv-negative']
+      },
+      {
+        id: 'inv-002',
         bloodType: 'A',
         rhFactor: 'positive',
-        units: 25,
-        hospital: 'Central Hospital',
-        processedDate: new Date('2023-05-01'),
-        expirationDate: new Date('2023-06-12'),
+        units: 32,
+        hospital: 'Central General Hospital',
+        processedDate: new Date('2024-11-22'),
+        expirationDate: new Date('2025-01-04'),
         donorAge: 28,
+        specialAttributes: ['irradiated']
+      },
+      {
+        id: 'inv-003',
+        bloodType: 'B',
+        rhFactor: 'positive',
+        units: 18,
+        hospital: 'Mercy Medical Center',
+        processedDate: new Date('2024-11-18'),
+        expirationDate: new Date('2024-12-30'),
+        donorAge: 35,
         specialAttributes: ['leukoreduced']
       },
       {
-        id: 'inv-456',
+        id: 'inv-004',
+        bloodType: 'AB',
+        rhFactor: 'positive',
+        units: 12,
+        hospital: 'Regional Emergency Hospital',
+        processedDate: new Date('2024-11-25'),
+        expirationDate: new Date('2025-01-06'),
+        donorAge: 29,
+        specialAttributes: ['washed', 'cmv-negative']
+      },
+      {
+        id: 'inv-005',
         bloodType: 'O',
+        rhFactor: 'positive',
+        units: 38,
+        hospital: 'Children\'s Specialty Hospital',
+        processedDate: new Date('2024-11-21'),
+        expirationDate: new Date('2025-01-03'),
+        donorAge: 26,
+        specialAttributes: ['leukoreduced', 'irradiated']
+      },
+      {
+        id: 'inv-006',
+        bloodType: 'A',
+        rhFactor: 'negative',
+        units: 22,
+        hospital: 'Mercy Medical Center',
+        processedDate: new Date('2024-11-23'),
+        expirationDate: new Date('2025-01-05'),
+        donorAge: 41,
+        specialAttributes: ['cmv-negative']
+      },
+      {
+        id: 'inv-007',
+        bloodType: 'B',
         rhFactor: 'negative',
         units: 15,
-        hospital: 'Central Hospital',
-        processedDate: new Date('2023-05-10'),
-        expirationDate: new Date('2023-06-21'),
-        donorAge: 35,
+        hospital: 'Regional Emergency Hospital',
+        processedDate: new Date('2024-11-19'),
+        expirationDate: new Date('2025-01-01'),
+        donorAge: 33,
+        specialAttributes: ['leukoreduced', 'washed']
+      },
+      {
+        id: 'inv-008',
+        bloodType: 'AB',
+        rhFactor: 'negative',
+        units: 8,
+        hospital: 'Central General Hospital',
+        processedDate: new Date('2024-11-24'),
+        expirationDate: new Date('2025-01-07'),
+        donorAge: 37,
         specialAttributes: ['irradiated', 'cmv-negative']
       }
     ];
 
+    // Enhanced blood requests with varied urgency and requirements
     const defaultRequests: BloodRequest[] = [
       {
-        id: 'req-123',
-        bloodType: 'A Rh+ (A+)',
-        hospital: 'Central Hospital',
-        urgency: 'urgent',
+        id: 'req-critical-001',
+        bloodType: 'O Rh- (O-)',
+        hospital: 'Central General Hospital',
+        urgency: 'critical',
         distance: 0,
-        timeNeeded: 'Needed by May 25, 2023',
+        timeNeeded: 'Needed within 2 hours',
+        status: 'pending',
+        units: 4,
+        neededBy: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours from now
+        patientAge: 32,
+        patientWeight: 70,
+        medicalCondition: 'Emergency surgery - massive trauma',
+        specialRequirements: ['leukoreduced'],
+        createdAt: new Date(),
+        matchPercentage: 95
+      },
+      {
+        id: 'req-urgent-002',
+        bloodType: 'A Rh+ (A+)',
+        hospital: 'Mercy Medical Center',
+        urgency: 'urgent',
+        distance: 5,
+        timeNeeded: 'Needed within 6 hours',
         status: 'pending',
         units: 2,
-        neededBy: new Date('2023-05-25'),
+        neededBy: new Date(Date.now() + 6 * 60 * 60 * 1000), // 6 hours from now
         patientAge: 45,
-        medicalCondition: 'Surgery preparation',
-        createdAt: new Date('2023-05-20'),
-        matchPercentage: 85
+        patientWeight: 80,
+        medicalCondition: 'Scheduled surgery preparation',
+        specialRequirements: ['cmv-negative'],
+        createdAt: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
+        matchPercentage: 88
+      },
+      {
+        id: 'req-standard-003',
+        bloodType: 'B Rh+ (B+)',
+        hospital: 'Regional Emergency Hospital',
+        urgency: 'standard',
+        distance: 12,
+        timeNeeded: 'Needed within 24 hours',
+        status: 'pending',
+        units: 3,
+        neededBy: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+        patientAge: 28,
+        patientWeight: 65,
+        medicalCondition: 'Elective procedure',
+        specialRequirements: ['irradiated'],
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+        matchPercentage: 82
+      },
+      {
+        id: 'req-critical-004',
+        bloodType: 'AB Rh+ (AB+)',
+        hospital: 'Children\'s Specialty Hospital',
+        urgency: 'critical',
+        distance: 8,
+        timeNeeded: 'Needed within 1 hour',
+        status: 'pending',
+        units: 2,
+        neededBy: new Date(Date.now() + 1 * 60 * 60 * 1000), // 1 hour from now
+        patientAge: 12,
+        patientWeight: 40,
+        medicalCondition: 'Pediatric emergency - internal bleeding',
+        specialRequirements: ['leukoreduced', 'washed'],
+        createdAt: new Date(Date.now() - 15 * 60 * 1000), // 15 minutes ago
+        matchPercentage: 91
+      },
+      {
+        id: 'req-urgent-005',
+        bloodType: 'O Rh+ (O+)',
+        hospital: 'Central General Hospital',
+        urgency: 'urgent',
+        distance: 0,
+        timeNeeded: 'Needed within 4 hours',
+        status: 'pending',
+        units: 6,
+        neededBy: new Date(Date.now() + 4 * 60 * 60 * 1000), // 4 hours from now
+        patientAge: 58,
+        patientWeight: 85,
+        medicalCondition: 'Cardiac surgery preparation',
+        specialRequirements: ['cmv-negative', 'leukoreduced'],
+        createdAt: new Date(Date.now() - 45 * 60 * 1000), // 45 minutes ago
+        matchPercentage: 93
       }
     ];
 
-    saveToStorage(STORAGE_KEYS.HOSPITALS, []);
+    // Save enhanced data
+    saveToStorage(STORAGE_KEYS.HOSPITALS, defaultHospitals);
     saveToStorage(STORAGE_KEYS.BLOOD_INVENTORY, defaultInventory);
     saveToStorage(STORAGE_KEYS.BLOOD_REQUESTS, defaultRequests);
     saveToStorage(STORAGE_KEYS.INITIALIZED, 'true');
+    
+    console.log('Enhanced sample data initialized with:', {
+      hospitals: defaultHospitals.length,
+      inventory: defaultInventory.length,
+      requests: defaultRequests.length
+    });
   }
 };
 

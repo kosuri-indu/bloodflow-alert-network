@@ -91,7 +91,7 @@ class MockDatabaseService {
     const hospital1: Hospital = {
       id: 'hosp_1',
       name: 'City General Hospital',
-      address: '123 Main St, Anytown',
+      address: '123 Main St, Downtown Area',
       contactPerson: 'Dr. Jane Doe',
       email: 'jane.doe@citygeneral.com',
       registrationId: 'CGH12345',
@@ -101,7 +101,7 @@ class MockDatabaseService {
     const hospital2: Hospital = {
       id: 'hosp_2',
       name: 'Community Medical Center',
-      address: '456 Oak Ave, Anytown',
+      address: '456 Oak Ave, West District',
       contactPerson: 'John Smith',
       email: 'john.smith@communitymed.org',
       registrationId: 'CMC67890',
@@ -111,7 +111,7 @@ class MockDatabaseService {
     const hospital3: Hospital = {
       id: 'hosp_3',
       name: 'University Hospital',
-      address: '789 Pine Ln, Anytown',
+      address: '789 Pine Ln, University Campus',
       contactPerson: 'Alice Johnson',
       email: 'alice.johnson@universityhosp.edu',
       registrationId: 'UH24680',
@@ -222,6 +222,33 @@ class MockDatabaseService {
     }
   }
 
+  async verifyHospital(hospitalId: string): Promise<{ success: boolean; hospitalName?: string; error?: string }> {
+    try {
+      const hospitalIndex = this.pendingHospitals.findIndex(h => h.id === hospitalId);
+      if (hospitalIndex === -1) {
+        return { success: false, error: `Hospital with ID ${hospitalId} not found in pending hospitals.` };
+      }
+
+      const [hospital] = this.pendingHospitals.splice(hospitalIndex, 1);
+      hospital.verified = true;
+      this.hospitals.push(hospital);
+      this.saveToStorage();
+      return { success: true, hospitalName: hospital.name };
+    } catch (error) {
+      console.error('Error verifying hospital:', error);
+      return { success: false, error: 'Failed to verify hospital.' };
+    }
+  }
+
+  async getAllData(): Promise<{ hospitals: Hospital[]; pendingHospitals: Hospital[]; inventory: BloodInventory[]; requests: BloodRequest[] }> {
+    return {
+      hospitals: [...this.hospitals, ...this.pendingHospitals],
+      pendingHospitals: this.pendingHospitals,
+      inventory: this.bloodInventory,
+      requests: this.bloodRequests
+    };
+  }
+
   async deleteHospital(hospitalId: string): Promise<{ success: boolean; error?: string }> {
     try {
       const hospitalIndex = this.hospitals.findIndex(h => h.id === hospitalId);
@@ -255,9 +282,6 @@ class MockDatabaseService {
   }
 
   async getHospitalProfile(): Promise<Hospital> {
-    // For simplicity, return the first hospital in the list.
-    // In a real application, you would likely use authentication to
-    // determine the current hospital and return its profile.
     return this.hospitals[0];
   }
 
@@ -274,7 +298,6 @@ class MockDatabaseService {
     return this.bloodInventory;
   }
 
-  // New method to get inventory for a specific hospital
   async getHospitalBloodInventory(hospitalName: string): Promise<BloodInventory[]> {
     return this.bloodInventory.filter(item => item.hospital === hospitalName);
   }
@@ -283,12 +306,10 @@ class MockDatabaseService {
     return this.bloodRequests;
   }
 
-  // New method to get requests for a specific hospital
   async getHospitalBloodRequests(hospitalName: string): Promise<BloodRequest[]> {
     return this.bloodRequests.filter(request => request.hospital === hospitalName);
   }
 
-  // New method to get all hospitals with their inventory and requests
   async getAllHospitalsWithData(): Promise<{
     hospital: Hospital;
     inventory: BloodInventory[];
@@ -322,10 +343,7 @@ class MockDatabaseService {
 
   async contactHospital(hospitalId: string, requestId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Simulate contacting the hospital
       console.log(`Contacting hospital ${hospitalId} for request ${requestId}...`);
-      
-      // Simulate a successful contact
       return { success: true };
     } catch (error) {
       console.error('Error contacting hospital:', error);
@@ -349,20 +367,18 @@ class MockDatabaseService {
     }
   }
 
-  // Enhanced method to create blood request with government notification
   async createBloodRequest(request: Omit<BloodRequest, 'id' | 'createdAt' | 'matchPercentage'>): Promise<{ success: boolean; requestId?: string }> {
     try {
       const newRequest: BloodRequest = {
         ...request,
         id: `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         createdAt: new Date(),
-        matchPercentage: 0 // Will be updated by government AI matching
+        matchPercentage: 0
       };
 
       this.bloodRequests.push(newRequest);
       this.saveToStorage();
 
-      // Notify government dashboard (in a real system, this would be a notification/webhook)
       console.log(`🚨 GOVERNMENT ALERT: New blood request from ${request.hospital}`, newRequest);
 
       return { success: true, requestId: newRequest.id };

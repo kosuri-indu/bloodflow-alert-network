@@ -15,7 +15,6 @@ import mockDatabaseService, { BloodRequest, AiMatch } from "@/services/mockDatab
 import useAiMatching from "@/hooks/useAiMatching";
 import { Badge } from "@/components/ui/badge";
 
-// Blood types available
 const bloodTypes = [
   { value: "A Rh+ (A+)", label: "A Positive (A+)" },
   { value: "A Rh- (A-)", label: "A Negative (A-)" },
@@ -27,7 +26,6 @@ const bloodTypes = [
   { value: "O Rh- (O-)", label: "O Negative (O-)" }
 ];
 
-// Special requirement options
 const specialRequirements = [
   { id: "irradiated", label: "Irradiated" },
   { id: "leukoreduced", label: "Leukoreduced" },
@@ -42,11 +40,10 @@ const AiBloodMatchingSystem = () => {
   const [activeTab, setActiveTab] = useState('create-request');
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   
-  // Form state
   const [requestForm, setRequestForm] = useState({
     bloodType: "",
     units: 1,
-    urgency: "standard",
+    urgency: "routine",
     patientAge: "",
     patientWeight: "",
     medicalCondition: "",
@@ -54,10 +51,8 @@ const AiBloodMatchingSystem = () => {
     specialRequirements: [] as string[]
   });
   
-  // Validation
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   
-  // Handle checkbox changes for special requirements
   const handleSpecialRequirementsChange = (requirementId: string, checked: boolean) => {
     if (checked) {
       setRequestForm({
@@ -72,7 +67,6 @@ const AiBloodMatchingSystem = () => {
     }
   };
   
-  // Validate form before submission
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
     
@@ -81,7 +75,6 @@ const AiBloodMatchingSystem = () => {
     if (!requestForm.urgency) newErrors.urgency = "Urgency level is required";
     if (!requestForm.neededBy) newErrors.neededBy = "Needed by date is required";
     
-    // Optional validations
     if (requestForm.patientAge && (isNaN(Number(requestForm.patientAge)) || Number(requestForm.patientAge) < 0)) {
       newErrors.patientAge = "Age must be a positive number";
     }
@@ -94,7 +87,6 @@ const AiBloodMatchingSystem = () => {
     return Object.keys(newErrors).length === 0;
   };
   
-  // Handle request creation
   const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -104,36 +96,32 @@ const AiBloodMatchingSystem = () => {
       const today = new Date();
       const neededByDate = new Date(requestForm.neededBy);
       
-      // Format the request data
       const newRequest: Partial<BloodRequest> = {
         bloodType: requestForm.bloodType,
-        hospital: "City General Hospital", // Would come from user context
-        urgency: requestForm.urgency as 'critical' | 'urgent' | 'standard',
-        distance: 0, // Not applicable for outgoing requests
-        timeNeeded: `Needed by ${neededByDate.toLocaleDateString()}`,
-        status: 'pending',
+        hospital: "City General Hospital",
+        urgency: requestForm.urgency as 'routine' | 'urgent' | 'critical',
         units: Number(requestForm.units),
         neededBy: neededByDate,
-        patientAge: requestForm.patientAge ? Number(requestForm.patientAge) : undefined,
-        patientWeight: requestForm.patientWeight ? Number(requestForm.patientWeight) : undefined,
-        medicalCondition: requestForm.medicalCondition || undefined,
+        patientAge: requestForm.patientAge ? Number(requestForm.patientAge) : 0,
+        patientWeight: requestForm.patientWeight ? Number(requestForm.patientWeight) : 0,
+        medicalCondition: requestForm.medicalCondition || "",
         specialRequirements: requestForm.specialRequirements.length > 0 ? requestForm.specialRequirements : undefined
       };
       
-      const createdRequest = await mockDatabaseService.createBloodRequest(newRequest as any);
+      const result = await mockDatabaseService.createBloodRequest(newRequest as any);
       
-      toast({
-        title: "Request Created",
-        description: "Your blood request has been created successfully. Running AI matching...",
-      });
-      
-      // Run AI matching for the new request
-      setIsLoadingMatches(true);
-      await runAiMatching(createdRequest);
-      setIsLoadingMatches(false);
-      
-      // Switch to the matching results tab
-      setActiveTab('matching-results');
+      if (result.success && result.requestId) {
+        toast({
+          title: "Request Created",
+          description: "Your blood request has been created successfully. Running AI matching...",
+        });
+        
+        setIsLoadingMatches(true);
+        await runAiMatching({ id: result.requestId });
+        setIsLoadingMatches(false);
+        
+        setActiveTab('matching-results');
+      }
       
     } catch (error) {
       console.error("Error creating request:", error);
@@ -145,7 +133,6 @@ const AiBloodMatchingSystem = () => {
     }
   };
   
-  // Handle contact hospital
   const handleContactHospital = async (match: AiMatch) => {
     try {
       await contactHospital(match.donorId, match.requestId);
@@ -164,7 +151,6 @@ const AiBloodMatchingSystem = () => {
     }
   };
   
-  // Format compatibility score for display
   const formatCompatibilityDisplay = (score: number) => {
     if (score >= 95) return "Universal Donor";
     if (score === 100) return "Perfect Match";
@@ -256,10 +242,10 @@ const AiBloodMatchingSystem = () => {
                           <span>Urgent (Within 48 hours)</span>
                         </div>
                       </SelectItem>
-                      <SelectItem value="standard">
+                      <SelectItem value="routine">
                         <div className="flex items-center">
                           <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
-                          <span>Standard (Within 7 days)</span>
+                          <span>Routine (Within 7 days)</span>
                         </div>
                       </SelectItem>
                     </SelectContent>

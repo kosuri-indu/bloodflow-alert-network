@@ -29,7 +29,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Internal functions to handle database operations
 const authenticateUser = async (email: string, password: string, userType: UserType, extraData?: any) => {
   try {
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -102,24 +101,18 @@ const registerHospital = async (userData: any) => {
       }
     }
     
-    // Check if email already exists in ALL hospitals (verified and unverified)
     const allData = await mockDatabaseService.getAllData();
     
     if (allData.hospitals.some(h => h.email.toLowerCase() === userData.email.toLowerCase())) {
       throw new Error('A hospital with this email already exists');
     }
     
-    // Register hospital in database with verified=false
     await mockDatabaseService.registerHospital({
-      id: userData.id || `hospital-${Date.now()}`,
       name: userData.hospitalName,
       email: userData.email,
       contactPerson: userData.contactPerson,
-      phone: userData.phoneNumber,
       registrationId: userData.registrationId,
-      address: userData.address || '',
-      verified: false,
-      createdAt: new Date()
+      address: userData.address || ''
     });
     
     return { success: true };
@@ -138,13 +131,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userType, setUserType] = useState<UserType>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  // Force data refresh function
   const refreshData = () => {
     setRefreshTrigger(prev => prev + 1);
     console.log('AuthContext - Data refresh triggered');
   };
   
-  // Check for stored authentication on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('bloodbank_user');
     const storedUserType = localStorage.getItem('bloodbank_user_type');
@@ -165,7 +156,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
   
-  // Login function that works for both hospital and government users
   const login = async (email: string, password: string, type: UserType, extraData?: any): Promise<boolean> => {
     try {
       if (type !== 'hospital' && type !== 'government') {
@@ -188,11 +178,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      // Save user data
       setCurrentUser(result.user);
       setUserType(type);
       
-      // Save to local storage (for persistence)
       localStorage.setItem('bloodbank_user', JSON.stringify(result.user));
       localStorage.setItem('bloodbank_user_type', type);
       
@@ -203,10 +191,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           : "Welcome, Government Health Official",
       });
       
-      // Trigger data refresh
       refreshData();
       
-      // Redirect to appropriate dashboard
       if (type === 'government') {
         navigate('/government-dashboard');
       } else {
@@ -225,7 +211,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  // Register function (only for hospitals)
   const register = async (userData: any, type: UserType): Promise<boolean> => {
     try {
       if (type !== 'hospital') {
@@ -253,7 +238,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "Your hospital registration is pending verification by government health officials. We'll notify you once it's approved.",
       });
       
-      // Trigger data refresh
       refreshData();
       
       return true;
@@ -268,7 +252,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  // Government officials to approve hospital registrations
   const approveHospital = async (hospitalId: string): Promise<boolean> => {
     try {
       if (userType !== 'government') {
@@ -296,7 +279,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: `Hospital ${result.hospitalName} has been verified successfully.`,
       });
       
-      // Trigger data refresh
       refreshData();
       
       return true;

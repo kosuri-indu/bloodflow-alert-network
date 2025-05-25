@@ -9,7 +9,7 @@ import {
   Hospital,
   CheckCircle2,
   AlertCircle, 
-  ClipboardList,
+  Clipboard,
   LogOut,
   User,
   RefreshCw,
@@ -295,7 +295,7 @@ const GovernmentDashboardPage = () => {
           <Card>
             <CardContent className="p-4 flex flex-col items-center justify-center">
               <div className="rounded-full bg-green-100 p-3 mb-2">
-                <ClipboardList className="h-6 w-6 text-green-600" />
+                <Clipboard className="h-6 w-6 text-green-600" />
               </div>
               <p className="text-sm text-gray-500">Requests</p>
               <p className="text-2xl font-bold">{systemStats.activeRequests}</p>
@@ -533,7 +533,7 @@ const GovernmentDashboardPage = () => {
                           {/* Requests */}
                           <div>
                             <h4 className="font-medium mb-2 flex items-center">
-                              <ClipboardList className="h-4 w-4 mr-1 text-blue-600" />
+                              <Clipboard className="h-4 w-4 mr-1 text-blue-600" />
                               Blood Requests
                             </h4>
                             {hospitalData.requests.length > 0 ? (
@@ -545,7 +545,6 @@ const GovernmentDashboardPage = () => {
                                         {request.bloodType} • {request.units} units
                                       </span>
                                       <Badge 
-                                        size="sm"
                                         className={`text-xs ${
                                           request.urgency === 'critical' ? 'bg-red-500' :
                                           request.urgency === 'urgent' ? 'bg-amber-600' :
@@ -614,7 +613,7 @@ const GovernmentDashboardPage = () => {
                             {hospital.address}
                           </p>
                           <p className="text-gray-600">
-                            <ClipboardList className="inline-block h-4 w-4 mr-1" />
+                            <Clipboard className="inline-block h-4 w-4 mr-1" />
                             Registration ID: {hospital.registrationId}
                           </p>
                           <p className="text-gray-600">

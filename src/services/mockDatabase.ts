@@ -51,6 +51,10 @@ export interface AiMatch {
   status: 'potential' | 'contacted' | 'fulfilled';
   specialAttributes?: string[];
   compatibilityScore: number;
+  donorAge?: number;
+  expiryDays?: number;
+  ageCompatibilityScore?: number;
+  medicalCompatibilityScore?: number;
 }
 
 class MockDatabaseService {

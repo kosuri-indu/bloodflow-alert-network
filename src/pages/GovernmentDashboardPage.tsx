@@ -431,15 +431,81 @@ const GovernmentDashboardPage = () => {
                                 className="bg-purple-600 hover:bg-purple-700"
                               >
                                 <Brain className="h-4 w-4 mr-1" />
-                                {isProcessing ? 'Processing...' : 'Run AI Match'}
+                                {isProcessing ? 'Processing...' : 'Run Smart AI Match'}
                               </Button>
                             ) : (
                               <div className="text-sm text-green-600 font-medium">
-                                ✓ Matches Found
+                                ✓ {matches.filter(m => m.requestId === request.id).length} Matches Found
                               </div>
                             )}
                           </div>
                         </div>
+                        
+                        {/* Show matches for this request */}
+                        {matches.filter(match => match.requestId === request.id).length > 0 && (
+                          <div className="mt-4 border-t pt-4">
+                            <h4 className="font-medium mb-2 text-sm text-gray-700">AI Matched Hospitals:</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              {matches.filter(match => match.requestId === request.id).slice(0, 4).map((match, idx) => (
+                                <div key={idx} className="p-3 bg-white border rounded-lg text-sm">
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                      <p className="font-medium">{match.hospitalName}</p>
+                                      <p className="text-xs text-gray-600 flex items-center">
+                                        <MapPin className="h-3 w-3 mr-1" />
+                                        {match.distance}km away
+                                      </p>
+                                    </div>
+                                    <Badge className="bg-green-600 text-xs">
+                                      {match.matchScore}%
+                                    </Badge>
+                                  </div>
+                                  
+                                  <div className="space-y-1 text-xs text-gray-600">
+                                    <p><span className="font-medium">Blood:</span> {match.bloodType} ({match.availableUnits} units)</p>
+                                    {match.donorAge && (
+                                      <p><span className="font-medium">Donor Age:</span> {match.donorAge} years</p>
+                                    )}
+                                    {match.expiryDays && match.expiryDays > 0 && (
+                                      <p><span className="font-medium">Expires:</span> {match.expiryDays} days</p>
+                                    )}
+                                    {match.specialAttributes && match.specialAttributes.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {match.specialAttributes.slice(0, 2).map((attr, i) => (
+                                          <Badge key={i} variant="outline" className="text-xs">
+                                            {attr.replace('-', ' ')}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  <div className="flex justify-between items-center mt-2">
+                                    <div className="text-xs text-gray-500">
+                                      {match.status === 'contacted' ? '✅ Contacted' : '⏳ Available'}
+                                    </div>
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => contactHospital(match.donorId, match.requestId)}
+                                      disabled={match.status === 'contacted'}
+                                      className="text-xs px-2 py-1 h-6"
+                                    >
+                                      <Phone className="h-3 w-3 mr-1" />
+                                      {match.status === 'contacted' ? 'Contacted' : 'Contact'}
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            
+                            {matches.filter(match => match.requestId === request.id).length > 4 && (
+                              <p className="text-xs text-gray-500 mt-2 text-center">
+                                +{matches.filter(match => match.requestId === request.id).length - 4} more matches available
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

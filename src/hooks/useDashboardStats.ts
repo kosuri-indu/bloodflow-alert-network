@@ -11,7 +11,7 @@ interface DashboardStats {
   expiringUnits: number;
 }
 
-export function useDashboardStats() {
+export function useDashboardStats(hospitalName?: string) {
   const [stats, setStats] = useState<DashboardStats>({
     totalBloodUnits: 0,
     aiMatches: 0,
@@ -25,11 +25,25 @@ export function useDashboardStats() {
   const refreshStats = async () => {
     try {
       setIsLoading(true);
-      const [inventory, requests, hospitals] = await Promise.all([
-        mockDatabaseService.getBloodInventoryDetails(),
-        mockDatabaseService.getBloodRequests(),
-        mockDatabaseService.getRegisteredHospitals(),
-      ]);
+      
+      let inventory: BloodInventory[];
+      let requests: BloodRequest[];
+      
+      if (hospitalName) {
+        // Hospital-specific stats
+        [inventory, requests] = await Promise.all([
+          mockDatabaseService.getHospitalBloodInventory(hospitalName),
+          mockDatabaseService.getHospitalBloodRequests(hospitalName),
+        ]);
+      } else {
+        // System-wide stats
+        [inventory, requests] = await Promise.all([
+          mockDatabaseService.getBloodInventoryDetails(),
+          mockDatabaseService.getBloodRequests(),
+        ]);
+      }
+      
+      const hospitals = await mockDatabaseService.getRegisteredHospitals();
 
       // Calculate total blood units
       const totalBloodUnits = inventory.reduce((sum, item) => sum + item.units, 0);
@@ -43,7 +57,8 @@ export function useDashboardStats() {
       // Count critical requests
       const criticalRequests = requests.filter(req => req.urgency === 'critical').length;
 
-      // Find low stock blood types (less than 20 units)
+      // Find low stock blood types (less than 20 units for system, less than 10 for hospital)
+      const lowStockThreshold = hospitalName ? 10 : 20;
       const bloodTypeStock = inventory.reduce((acc, item) => {
         const bloodType = `${item.bloodType} ${item.rhFactor === 'positive' ? '+' : '-'}`;
         acc[bloodType] = (acc[bloodType] || 0) + item.units;
@@ -51,7 +66,7 @@ export function useDashboardStats() {
       }, {} as Record<string, number>);
 
       const lowStockTypes = Object.entries(bloodTypeStock)
-        .filter(([, units]) => units < 20)
+        .filter(([, units]) => units < lowStockThreshold)
         .map(([type]) => type);
 
       // Calculate expiring units (within 7 days)
@@ -79,7 +94,7 @@ export function useDashboardStats() {
 
   useEffect(() => {
     refreshStats();
-  }, []);
+  }, [hospitalName]);
 
   return {
     stats,

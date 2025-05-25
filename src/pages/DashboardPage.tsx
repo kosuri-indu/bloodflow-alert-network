@@ -13,12 +13,8 @@ import {
   Clock,
   LogOut,
   User,
-  RefreshCw,
-  MapPin
+  RefreshCw
 } from "lucide-react";
-import { Progress } from "@/components/ui/progress";
-import mockDatabaseService, { BloodRequest, BloodInventory } from "@/services/mockDatabase";
-import AiBloodMatchingSystem from "@/components/ai/AiBloodMatchingSystem";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from "../context/AuthContext";
 import { format, differenceInDays } from "date-fns";
@@ -27,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import mockDatabaseService, { BloodRequest, BloodInventory } from "@/services/mockDatabase";
 import { useDashboardStats } from "../hooks/useDashboardStats";
 
 const DashboardPage = () => {
@@ -37,9 +34,8 @@ const DashboardPage = () => {
   const { toast } = useToast();
   const { currentUser, logout } = useAuth();
   const [isAddingInventory, setIsAddingInventory] = useState(false);
-  const { stats, isLoading: statsLoading, refreshStats } = useDashboardStats();
+  const [isCreatingRequest, setIsCreatingRequest] = useState(false);
 
-  // New inventory form state
   const [newInventoryForm, setNewInventoryForm] = useState({
     bloodType: "",
     rhFactor: "positive",
@@ -50,6 +46,17 @@ const DashboardPage = () => {
     specialAttributes: [] as string[]
   });
 
+  const [newRequestForm, setNewRequestForm] = useState({
+    bloodType: "",
+    units: 1,
+    urgency: "routine",
+    patientAge: 30,
+    patientWeight: 70,
+    medicalCondition: "",
+    neededBy: format(new Date(new Date().setHours(new Date().getHours() + 24)), "yyyy-MM-dd'T'HH:mm"),
+    specialRequirements: [] as string[]
+  });
+
   const handleLogout = () => {
     console.log('Hospital Dashboard - LOGOUT CLICKED');
     logout();
@@ -58,20 +65,19 @@ const DashboardPage = () => {
   const refreshAllData = async () => {
     setIsLoading(true);
     try {
-      const [profile, inventoryDetails, requests] = await Promise.all([
-        mockDatabaseService.getHospitalProfile(),
-        mockDatabaseService.getBloodInventoryDetails(),
-        mockDatabaseService.getBloodRequests(),
+      const profile = await mockDatabaseService.getHospitalProfile();
+      const [inventoryDetails, requests] = await Promise.all([
+        mockDatabaseService.getHospitalBloodInventory(profile.name),
+        mockDatabaseService.getHospitalBloodRequests(profile.name)
       ]);
       
       setHospitalProfile(profile);
       setBloodInventory(inventoryDetails);
       setBloodRequests(requests);
-      await refreshStats();
       
       toast({
         title: "Data Refreshed",
-        description: "All dashboard data has been updated successfully.",
+        description: "Your hospital data has been updated successfully.",
       });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -89,29 +95,25 @@ const DashboardPage = () => {
     refreshAllData();
   }, []);
 
-  // Handle blood request creation
-  const handleCreateBloodRequest = () => {
-    toast({
-      title: "Create Blood Request",
-      description: "Switching to AI matching to create a new blood request.",
-    });
-    
-    // Navigate to the AI matching tab
-    const aiMatchingTab = document.querySelector('[value="ai-matching"]') as HTMLElement;
-    if (aiMatchingTab) {
-      aiMatchingTab.click();
-    }
+  const hospitalStats = {
+    totalBloodUnits: bloodInventory.reduce((sum, item) => sum + item.units, 0),
+    activeRequests: bloodRequests.length,
+    criticalRequests: bloodRequests.filter(req => req.urgency === 'critical').length,
+    lowStockTypes: Object.entries(
+      bloodInventory.reduce((acc, item) => {
+        const bloodType = `${item.bloodType} ${item.rhFactor === 'positive' ? '+' : '-'}`;
+        acc[bloodType] = (acc[bloodType] || 0) + item.units;
+        return acc;
+      }, {} as Record<string, number>)
+    ).filter(([, units]) => units < 10).map(([type]) => type)
   };
 
-  // Format blood type for display
   const formatBloodType = (bloodType: string, rhFactor: string) => {
     return `${bloodType} ${rhFactor === 'positive' ? `Rh+ (${bloodType}+)` : `Rh- (${bloodType}-)`}`;
   };
 
-  // Handle add inventory form submit
   const handleAddInventory = async () => {
     try {
-      // Basic validation
       if (!newInventoryForm.bloodType || newInventoryForm.units < 1) {
         toast({
           title: "Validation Error",
@@ -121,7 +123,6 @@ const DashboardPage = () => {
         return;
       }
 
-      // Create new inventory item
       const newInventory = {
         bloodType: newInventoryForm.bloodType,
         rhFactor: newInventoryForm.rhFactor as 'positive' | 'negative',
@@ -133,19 +134,14 @@ const DashboardPage = () => {
         specialAttributes: newInventoryForm.specialAttributes
       };
 
-      // Add to database
       await mockDatabaseService.addBloodInventory(newInventory);
-      
-      // Refresh all data
       await refreshAllData();
 
-      // Show success message
       toast({
         title: "Inventory Added",
         description: `${newInventoryForm.units} units of ${formatBloodType(newInventoryForm.bloodType, newInventoryForm.rhFactor)} added to inventory.`,
       });
 
-      // Reset form and close dialog
       setNewInventoryForm({
         bloodType: "",
         rhFactor: "positive",
@@ -166,33 +162,64 @@ const DashboardPage = () => {
     }
   };
 
-  // Handle checkbox changes for special attributes
-  const handleSpecialAttributesChange = (attributeId: string, checked: boolean) => {
-    if (checked) {
-      setNewInventoryForm({
-        ...newInventoryForm,
-        specialAttributes: [...newInventoryForm.specialAttributes, attributeId]
-      });
-    } else {
-      setNewInventoryForm({
-        ...newInventoryForm,
-        specialAttributes: newInventoryForm.specialAttributes.filter(id => id !== attributeId)
-      });
-    }
-  };
+  const handleCreateBloodRequest = async () => {
+    try {
+      if (!newRequestForm.bloodType || newRequestForm.units < 1) {
+        toast({
+          title: "Validation Error",
+          description: "Please fill all required fields correctly.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-  // Calculate expiry status for blood inventory
-  const getExpiryStatus = (expirationDate: Date) => {
-    const daysRemaining = differenceInDays(new Date(expirationDate), new Date());
-    
-    if (daysRemaining <= 0) {
-      return { status: 'expired', color: 'text-red-600', message: 'Expired' };
-    } else if (daysRemaining <= 7) {
-      return { status: 'critical', color: 'text-red-600', message: `${daysRemaining}d left` };
-    } else if (daysRemaining <= 14) {
-      return { status: 'warning', color: 'text-amber-600', message: `${daysRemaining}d left` };
-    } else {
-      return { status: 'good', color: 'text-green-600', message: `${daysRemaining}d left` };
+      const newRequest = {
+        hospital: hospitalProfile.name,
+        bloodType: `${newRequestForm.bloodType} ${newRequestForm.bloodType === 'O' ? 'Rh-' : 'Rh+'} (${newRequestForm.bloodType}${newRequestForm.bloodType === 'O' ? '-' : '+'})`,
+        units: newRequestForm.units,
+        urgency: newRequestForm.urgency as 'routine' | 'urgent' | 'critical',
+        patientAge: newRequestForm.patientAge,
+        patientWeight: newRequestForm.patientWeight,
+        medicalCondition: newRequestForm.medicalCondition,
+        neededBy: new Date(newRequestForm.neededBy),
+        specialRequirements: newRequestForm.specialRequirements
+      };
+
+      const result = await mockDatabaseService.createBloodRequest(newRequest);
+      
+      if (result.success) {
+        await refreshAllData();
+        
+        toast({
+          title: "Blood Request Created",
+          description: "Your request has been sent to the Government Health Authority for matching.",
+        });
+
+        setNewRequestForm({
+          bloodType: "",
+          units: 1,
+          urgency: "routine",
+          patientAge: 30,
+          patientWeight: 70,
+          medicalCondition: "",
+          neededBy: format(new Date(new Date().setHours(new Date().getHours() + 24)), "yyyy-MM-dd'T'HH:mm"),
+          specialRequirements: []
+        });
+        setIsCreatingRequest(false);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to create blood request. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error creating request:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create blood request.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -202,15 +229,14 @@ const DashboardPage = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-red-600 mb-2 md:mb-0">
-              Hospital Dashboard
+              {hospitalProfile?.name || 'Hospital'} Dashboard
             </h1>
             <p className="text-sm text-gray-500">
-              Manage blood inventory and find matches with AI
+              Manage your blood inventory and requests
             </p>
           </div>
           
           <div className="flex items-center gap-4 mt-4 md:mt-0">
-            {/* User Info */}
             <div className="flex items-center gap-2 px-3 py-2 bg-white border rounded-lg shadow-sm">
               <User size={16} className="text-gray-600" />
               <div className="text-sm">
@@ -219,7 +245,6 @@ const DashboardPage = () => {
               </div>
             </div>
             
-            {/* Action Buttons */}
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
@@ -235,11 +260,11 @@ const DashboardPage = () => {
               <Button className="bg-purple-600 hover:bg-purple-700" onClick={() => setIsAddingInventory(true)}>
                 <Plus className="h-4 w-4 mr-1" /> Add Inventory
               </Button>
-              <Button className="bg-red-600 hover:bg-red-700" onClick={handleCreateBloodRequest}>
-                Create Blood Request
+              
+              <Button className="bg-red-600 hover:bg-red-700" onClick={() => setIsCreatingRequest(true)}>
+                Create Request
               </Button>
               
-              {/* Logout Button */}
               <Button
                 variant="destructive"
                 size="lg"
@@ -262,36 +287,23 @@ const DashboardPage = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <Card>
                 <CardContent className="p-4 flex flex-col items-center justify-center">
-                  <div className="rounded-full bg-purple-100 p-3 mb-2">
-                    <Brain className="h-6 w-6 text-purple-600" />
-                  </div>
-                  <p className="text-sm text-gray-500">AI Matches</p>
-                  <p className="text-2xl font-bold">{statsLoading ? '...' : stats.aiMatches}</p>
-                  <p className="text-xs text-gray-400">High quality matches</p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-4 flex flex-col items-center justify-center">
                   <div className="rounded-full bg-red-100 p-3 mb-2">
                     <DropletIcon className="h-6 w-6 text-red-600" />
                   </div>
-                  <p className="text-sm text-gray-500">Blood Units</p>
-                  <p className="text-2xl font-bold">{statsLoading ? '...' : stats.totalBloodUnits}</p>
-                  <p className="text-xs text-gray-400">
-                    {stats.expiringUnits > 0 && `${stats.expiringUnits} expiring soon`}
-                  </p>
+                  <p className="text-sm text-gray-500">My Blood Units</p>
+                  <p className="text-2xl font-bold">{hospitalStats.totalBloodUnits}</p>
+                  <p className="text-xs text-gray-400">In inventory</p>
                 </CardContent>
               </Card>
               
               <Card>
                 <CardContent className="p-4 flex flex-col items-center justify-center">
                   <div className="rounded-full bg-blue-100 p-3 mb-2">
-                    <Hospital className="h-6 w-6 text-blue-600" />
+                    <ClipboardList className="h-6 w-6 text-blue-600" />
                   </div>
-                  <p className="text-sm text-gray-500">Partner Hospitals</p>
-                  <p className="text-2xl font-bold">{statsLoading ? '...' : stats.partnerHospitals}</p>
-                  <p className="text-xs text-gray-400">Verified partners</p>
+                  <p className="text-sm text-gray-500">Active Requests</p>
+                  <p className="text-2xl font-bold">{hospitalStats.activeRequests}</p>
+                  <p className="text-xs text-gray-400">Pending matching</p>
                 </CardContent>
               </Card>
               
@@ -300,15 +312,25 @@ const DashboardPage = () => {
                   <div className="rounded-full bg-amber-100 p-3 mb-2">
                     <AlertCircle className="h-6 w-6 text-amber-600" />
                   </div>
-                  <p className="text-sm text-gray-500">Critical Requests</p>
-                  <p className="text-2xl font-bold text-amber-600">{statsLoading ? '...' : stats.criticalRequests}</p>
-                  <p className="text-xs text-gray-400">Urgent attention needed</p>
+                  <p className="text-sm text-gray-500">Critical</p>
+                  <p className="text-2xl font-bold text-amber-600">{hospitalStats.criticalRequests}</p>
+                  <p className="text-xs text-gray-400">Urgent requests</p>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardContent className="p-4 flex flex-col items-center justify-center">
+                  <div className="rounded-full bg-orange-100 p-3 mb-2">
+                    <TrendingUp className="h-6 w-6 text-orange-600" />
+                  </div>
+                  <p className="text-sm text-gray-500">Low Stock</p>
+                  <p className="text-2xl font-bold text-orange-600">{hospitalStats.lowStockTypes.length}</p>
+                  <p className="text-xs text-gray-400">Blood types</p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Low Stock Alert */}
-            {stats.lowStockTypes.length > 0 && (
+            {hospitalStats.lowStockTypes.length > 0 && (
               <Card className="mb-6 border-amber-200 bg-amber-50">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-2">
@@ -316,23 +338,18 @@ const DashboardPage = () => {
                     <h3 className="font-semibold text-amber-800">Low Stock Alert</h3>
                   </div>
                   <p className="text-sm text-amber-700">
-                    Low stock detected for: {stats.lowStockTypes.join(', ')}
+                    Low stock detected for: {hospitalStats.lowStockTypes.join(', ')}
                   </p>
                 </CardContent>
               </Card>
             )}
 
-            <Tabs defaultValue="ai-matching" className="w-full">
-              <TabsList className="w-full grid grid-cols-3 mb-6">
-                <TabsTrigger value="ai-matching">AI Matching</TabsTrigger>
-                <TabsTrigger value="inventory">Blood Inventory</TabsTrigger>
+            <Tabs defaultValue="inventory" className="w-full">
+              <TabsList className="w-full grid grid-cols-2 mb-6">
+                <TabsTrigger value="inventory">My Blood Inventory</TabsTrigger>
                 <TabsTrigger value="requests">My Requests</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="ai-matching">
-                <AiBloodMatchingSystem />
-              </TabsContent>
-              
               <TabsContent value="inventory">
                 <Card>
                   <CardHeader className="pb-2">
@@ -355,7 +372,6 @@ const DashboardPage = () => {
                           <tr className="border-b">
                             <th className="text-left py-3">Blood Type</th>
                             <th className="text-left py-3">Units</th>
-                            <th className="text-left py-3">Hospital & Area</th>
                             <th className="text-left py-3">Processed</th>
                             <th className="text-left py-3">Expiration</th>
                             <th className="text-left py-3">Special Attributes</th>
@@ -382,15 +398,6 @@ const DashboardPage = () => {
                                     'text-gray-900'
                                   }`}>
                                     {item.units} units
-                                  </div>
-                                </td>
-                                <td className="py-3">
-                                  <div className="flex items-center text-sm">
-                                    <Hospital className="h-4 w-4 text-blue-600 mr-1" />
-                                    <div>
-                                      <p className="font-medium">{item.hospital}</p>
-                                      <p className="text-xs text-gray-500">Downtown Medical District</p>
-                                    </div>
                                   </div>
                                 </td>
                                 <td className="py-3">
@@ -423,7 +430,7 @@ const DashboardPage = () => {
                           
                           {bloodInventory.length === 0 && (
                             <tr>
-                              <td colSpan={6} className="py-8 text-center text-gray-500">
+                              <td colSpan={5} className="py-8 text-center text-gray-500">
                                 No blood inventory found. Add inventory to get started.
                               </td>
                             </tr>
@@ -439,7 +446,7 @@ const DashboardPage = () => {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-xl flex items-center justify-between">
-                      <span>Active Blood Requests</span>
+                      <span>My Blood Requests</span>
                       <Button 
                         size="sm" 
                         variant="outline"
@@ -535,15 +542,6 @@ const DashboardPage = () => {
                                 </div>
                               )}
                             </div>
-                            
-                            <div className="ml-4">
-                              <Button size="sm" variant="outline" className="mb-2 w-full">
-                                View Matches
-                              </Button>
-                              <Button size="sm" className="w-full bg-green-600 hover:bg-green-700">
-                                Contact Donors
-                              </Button>
-                            </div>
                           </div>
                         </div>
                       ))}
@@ -553,9 +551,9 @@ const DashboardPage = () => {
                           <Hospital className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                           <p className="text-lg font-medium mb-2">No active blood requests</p>
                           <p className="text-sm text-gray-500 mb-4">
-                            Create a request to find matches from other hospitals using our AI matching system.
+                            Create a request to get blood from other hospitals through the Government Health Authority.
                           </p>
-                          <Button onClick={handleCreateBloodRequest} className="bg-red-600 hover:bg-red-700">
+                          <Button onClick={() => setIsCreatingRequest(true)} className="bg-red-600 hover:bg-red-700">
                             Create Your First Request
                           </Button>
                         </div>
@@ -569,7 +567,6 @@ const DashboardPage = () => {
         )}
       </div>
       
-      {/* Add Inventory Dialog */}
       <Dialog open={isAddingInventory} onOpenChange={setIsAddingInventory}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -714,6 +711,118 @@ const DashboardPage = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsAddingInventory(false)}>Cancel</Button>
             <Button onClick={handleAddInventory}>Add to Inventory</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <Dialog open={isCreatingRequest} onOpenChange={setIsCreatingRequest}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Create Blood Request</DialogTitle>
+            <DialogDescription>
+              Submit a blood request to the Government Health Authority. They will find matches from other hospitals.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="bloodType">Blood Type</Label>
+                <Select
+                  value={newRequestForm.bloodType}
+                  onValueChange={(value) => setNewRequestForm({...newRequestForm, bloodType: value})}
+                >
+                  <SelectTrigger id="bloodType">
+                    <SelectValue placeholder="Select Blood Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A">A</SelectItem>
+                    <SelectItem value="B">B</SelectItem>
+                    <SelectItem value="AB">AB</SelectItem>
+                    <SelectItem value="O">O</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="urgency">Urgency</Label>
+                <Select
+                  value={newRequestForm.urgency}
+                  onValueChange={(value) => setNewRequestForm({...newRequestForm, urgency: value})}
+                >
+                  <SelectTrigger id="urgency">
+                    <SelectValue placeholder="Select Urgency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="routine">Routine</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="units">Units Needed</Label>
+              <Input
+                id="units"
+                type="number"
+                min="1"
+                value={newRequestForm.units}
+                onChange={(e) => setNewRequestForm({...newRequestForm, units: parseInt(e.target.value) || 1})}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="patientAge">Patient Age</Label>
+                <Input
+                  id="patientAge"
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={newRequestForm.patientAge}
+                  onChange={(e) => setNewRequestForm({...newRequestForm, patientAge: parseInt(e.target.value) || 30})}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="patientWeight">Patient Weight (kg)</Label>
+                <Input
+                  id="patientWeight"
+                  type="number"
+                  min="1"
+                  max="200"
+                  value={newRequestForm.patientWeight}
+                  onChange={(e) => setNewRequestForm({...newRequestForm, patientWeight: parseInt(e.target.value) || 70})}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="medicalCondition">Medical Condition</Label>
+              <Input
+                id="medicalCondition"
+                value={newRequestForm.medicalCondition}
+                onChange={(e) => setNewRequestForm({...newRequestForm, medicalCondition: e.target.value})}
+                placeholder="e.g., Surgery, Trauma, Anemia"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="neededBy">Needed By</Label>
+              <Input
+                id="neededBy"
+                type="datetime-local"
+                value={newRequestForm.neededBy}
+                onChange={(e) => setNewRequestForm({...newRequestForm, neededBy: e.target.value})}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreatingRequest(false)}>Cancel</Button>
+            <Button onClick={handleCreateBloodRequest}>Submit Request</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

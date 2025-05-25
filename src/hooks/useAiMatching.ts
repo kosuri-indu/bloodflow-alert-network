@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
-import { useToast } from '@/components/ui/use-toast';
-import mockDatabaseService, { AiMatch, BloodRequest } from '@/services/mockDatabase';
+import { useToast } from '@/hooks/use-toast';
+import mockDatabaseService, { AiMatch, BloodRequest, BloodInventory } from '@/services/mockDatabase';
 
 // Blood compatibility chart - defining which blood types can donate to which recipients
 const bloodCompatibility = {
@@ -41,6 +41,10 @@ const calculateBloodCompatibilityScore = (donorBloodType: string, recipientBlood
   return 0;
 }
 
+const formatBloodType = (bloodType: string, rhFactor: string) => {
+  return `${bloodType} ${rhFactor === 'positive' ? `Rh+ (${bloodType}+)` : `Rh- (${bloodType}-)`}`;
+};
+
 export function useAiMatching() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [matches, setMatches] = useState<AiMatch[]>([]);
@@ -54,55 +58,96 @@ export function useAiMatching() {
     });
 
     try {
-      // Simulate AI processing
-      const result = await mockDatabaseService.processAiMatching(request.id);
+      // Get actual inventory data for matching
+      const inventory = await mockDatabaseService.getBloodInventoryDetails();
+      const hospitals = await mockDatabaseService.getRegisteredHospitals();
       
-      // TypeScript fix: Check if result exists and has expected structure
-      const processedResult = result as { success: boolean; matches?: AiMatch[]; requestBloodType?: string; error?: string };
+      // Find the blood request
+      const bloodRequests = await mockDatabaseService.getBloodRequests();
+      const bloodRequest = bloodRequests.find(req => req.id === request.id);
       
-      if (processedResult.success && processedResult.matches && processedResult.requestBloodType) {
-        // Calculate final scores based on blood type compatibility
-        const enhancedMatches = processedResult.matches.map((match: AiMatch) => {
-          const compatibilityScore = calculateBloodCompatibilityScore(match.bloodType, processedResult.requestBloodType as string);
+      if (!bloodRequest) {
+        throw new Error('Blood request not found');
+      }
+
+      // Create matches based on actual inventory
+      const potentialMatches: AiMatch[] = [];
+      
+      inventory.forEach(inv => {
+        const hospital = hospitals.find(h => h.name === inv.hospital);
+        if (!hospital) return;
+        
+        const donorBloodType = formatBloodType(inv.bloodType, inv.rhFactor);
+        const compatibilityScore = calculateBloodCompatibilityScore(donorBloodType, bloodRequest.bloodType);
+        
+        // Only include compatible blood types
+        if (compatibilityScore > 0 && inv.units > 0) {
+          // Calculate distance (simulated based on hospital location)
+          const distance = Math.floor(Math.random() * 25) + 1;
           
-          // If blood types are completely incompatible, filter them out
-          if (compatibilityScore === 0) return null;
+          // Calculate final match score based on multiple factors
+          const urgencyMultiplier = bloodRequest.urgency === 'critical' ? 1.2 : 
+                                    bloodRequest.urgency === 'urgent' ? 1.1 : 1.0;
           
-          // Apply blood compatibility as a major factor in the final score
-          // We weight blood compatibility at 70% and other factors at 30%
+          const unitsAvailableScore = Math.min(inv.units / bloodRequest.units, 1) * 100;
+          const distanceScore = Math.max(0, 100 - (distance * 2));
+          
           const finalScore = Math.round(
-            (compatibilityScore * 0.7) + (match.matchScore * 0.3)
+            (compatibilityScore * 0.4) + 
+            (unitsAvailableScore * 0.3) + 
+            (distanceScore * 0.2) + 
+            (urgencyMultiplier * 10)
           );
           
-          return {
-            ...match,
-            matchScore: finalScore,
-            compatibilityScore
-          };
-        }).filter(Boolean) as AiMatch[];
-        
-        // Sort by match score (highest first)
-        const sortedMatches = enhancedMatches.sort((a, b) => b.matchScore - a.matchScore);
-        
-        setMatches(sortedMatches);
-        toast({
-          title: "AI Matching Complete",
-          description: `Found ${sortedMatches.length} potential hospital matches for this request.`,
-        });
-      } else {
-        toast({
-          title: "AI Matching Failed",
-          description: processedResult.error || "Failed to process AI matching.",
-          variant: "destructive",
-        });
-      }
+          potentialMatches.push({
+            donorId: hospital.id,
+            requestId: bloodRequest.id,
+            hospitalName: hospital.name,
+            hospitalAddress: hospital.address,
+            bloodType: donorBloodType,
+            bloodRhFactor: inv.rhFactor,
+            availableUnits: inv.units,
+            distance: distance,
+            matchScore: Math.min(finalScore, 100),
+            status: 'potential',
+            specialAttributes: inv.specialAttributes || [],
+            compatibilityScore: compatibilityScore
+          });
+        }
+      });
+      
+      // Sort by match score (highest first) and take top matches
+      const sortedMatches = potentialMatches
+        .sort((a, b) => b.matchScore - a.matchScore)
+        .slice(0, 8); // Limit to top 8 matches
+      
+      setMatches(sortedMatches);
+      
+      // Update the request with match percentage based on best match
+      const bestMatchScore = sortedMatches.length > 0 ? sortedMatches[0].matchScore : 0;
+      await mockDatabaseService.updateBloodRequest(bloodRequest.id, { 
+        matchPercentage: bestMatchScore 
+      });
+      
+      toast({
+        title: "AI Matching Complete",
+        description: `Found ${sortedMatches.length} potential hospital matches for this request.`,
+      });
+      
+      return { 
+        success: true,
+        matches: sortedMatches,
+        requestBloodType: bloodRequest.bloodType
+      };
+      
     } catch (error) {
       console.error("AI matching error:", error);
       toast({
-        title: "AI Matching Error",
-        description: "An unexpected error occurred during AI matching.",
+        title: "AI Matching Failed",
+        description: "Failed to process AI matching. Please try again.",
         variant: "destructive",
       });
+      return { success: false, error: error.message };
     } finally {
       setIsProcessing(false);
     }
@@ -115,7 +160,7 @@ export function useAiMatching() {
       const processedResult = result as { success: boolean; error?: string };
       
       if (processedResult.success) {
-        // Update local matches state - fix the hospitalId reference to use donorId
+        // Update local matches state
         setMatches(prev => prev.map(match => 
           match.donorId === hospitalId && match.requestId === requestId 
             ? { ...match, status: 'contacted' } 

@@ -12,12 +12,14 @@ import {
   Plus,
   Clock,
   LogOut,
-  User
+  User,
+  RefreshCw,
+  MapPin
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import mockDatabaseService, { BloodRequest, BloodInventory } from "@/services/mockDatabase";
 import AiBloodMatchingSystem from "@/components/ai/AiBloodMatchingSystem";
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useAuth } from "../context/AuthContext";
 import { format, differenceInDays } from "date-fns";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -25,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useDashboardStats } from "../hooks/useDashboardStats";
 
 const DashboardPage = () => {
   const [bloodInventory, setBloodInventory] = useState<BloodInventory[]>([]);
@@ -34,6 +37,7 @@ const DashboardPage = () => {
   const { toast } = useToast();
   const { currentUser, logout } = useAuth();
   const [isAddingInventory, setIsAddingInventory] = useState(false);
+  const { stats, isLoading: statsLoading, refreshStats } = useDashboardStats();
 
   // New inventory form state
   const [newInventoryForm, setNewInventoryForm] = useState({
@@ -51,33 +55,39 @@ const DashboardPage = () => {
     logout();
   };
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      setIsLoading(true);
-      try {
-        const [profile, inventoryDetails, requests] = await Promise.all([
-          mockDatabaseService.getHospitalProfile(),
-          mockDatabaseService.getBloodInventoryDetails(),
-          mockDatabaseService.getBloodRequests(),
-        ]);
-        
-        setHospitalProfile(profile);
-        setBloodInventory(inventoryDetails);
-        setBloodRequests(requests);
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch dashboard data.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const refreshAllData = async () => {
+    setIsLoading(true);
+    try {
+      const [profile, inventoryDetails, requests] = await Promise.all([
+        mockDatabaseService.getHospitalProfile(),
+        mockDatabaseService.getBloodInventoryDetails(),
+        mockDatabaseService.getBloodRequests(),
+      ]);
+      
+      setHospitalProfile(profile);
+      setBloodInventory(inventoryDetails);
+      setBloodRequests(requests);
+      await refreshStats();
+      
+      toast({
+        title: "Data Refreshed",
+        description: "All dashboard data has been updated successfully.",
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch dashboard data.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    fetchDashboardData();
-  }, [toast]);
+  useEffect(() => {
+    refreshAllData();
+  }, []);
 
   // Handle blood request creation
   const handleCreateBloodRequest = () => {
@@ -111,10 +121,10 @@ const DashboardPage = () => {
         return;
       }
 
-      // Create new inventory item - cast rhFactor to the correct type
+      // Create new inventory item
       const newInventory = {
         bloodType: newInventoryForm.bloodType,
-        rhFactor: newInventoryForm.rhFactor as 'positive' | 'negative', // Fix: explicit type cast
+        rhFactor: newInventoryForm.rhFactor as 'positive' | 'negative',
         units: newInventoryForm.units,
         hospital: hospitalProfile.name,
         processedDate: new Date(newInventoryForm.processedDate),
@@ -126,9 +136,8 @@ const DashboardPage = () => {
       // Add to database
       await mockDatabaseService.addBloodInventory(newInventory);
       
-      // Refresh inventory data
-      const updatedInventory = await mockDatabaseService.getBloodInventoryDetails();
-      setBloodInventory(updatedInventory);
+      // Refresh all data
+      await refreshAllData();
 
       // Show success message
       toast({
@@ -212,6 +221,17 @@ const DashboardPage = () => {
             
             {/* Action Buttons */}
             <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={refreshAllData}
+                disabled={isLoading}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              
               <Button className="bg-purple-600 hover:bg-purple-700" onClick={() => setIsAddingInventory(true)}>
                 <Plus className="h-4 w-4 mr-1" /> Add Inventory
               </Button>
@@ -246,11 +266,8 @@ const DashboardPage = () => {
                     <Brain className="h-6 w-6 text-purple-600" />
                   </div>
                   <p className="text-sm text-gray-500">AI Matches</p>
-                  <p className="text-2xl font-bold">
-                    {bloodRequests.reduce((total, req) => {
-                      return req.matchPercentage > 70 ? total + 1 : total;
-                    }, 0)}
-                  </p>
+                  <p className="text-2xl font-bold">{statsLoading ? '...' : stats.aiMatches}</p>
+                  <p className="text-xs text-gray-400">High quality matches</p>
                 </CardContent>
               </Card>
               
@@ -260,8 +277,9 @@ const DashboardPage = () => {
                     <DropletIcon className="h-6 w-6 text-red-600" />
                   </div>
                   <p className="text-sm text-gray-500">Blood Units</p>
-                  <p className="text-2xl font-bold">
-                    {bloodInventory.reduce((sum, item) => sum + item.units, 0)}
+                  <p className="text-2xl font-bold">{statsLoading ? '...' : stats.totalBloodUnits}</p>
+                  <p className="text-xs text-gray-400">
+                    {stats.expiringUnits > 0 && `${stats.expiringUnits} expiring soon`}
                   </p>
                 </CardContent>
               </Card>
@@ -272,7 +290,8 @@ const DashboardPage = () => {
                     <Hospital className="h-6 w-6 text-blue-600" />
                   </div>
                   <p className="text-sm text-gray-500">Partner Hospitals</p>
-                  <p className="text-2xl font-bold">{hospitalProfile?.partnerHospitals || 0}</p>
+                  <p className="text-2xl font-bold">{statsLoading ? '...' : stats.partnerHospitals}</p>
+                  <p className="text-xs text-gray-400">Verified partners</p>
                 </CardContent>
               </Card>
               
@@ -282,12 +301,26 @@ const DashboardPage = () => {
                     <AlertCircle className="h-6 w-6 text-amber-600" />
                   </div>
                   <p className="text-sm text-gray-500">Critical Requests</p>
-                  <p className="text-2xl font-bold text-amber-600">
-                    {bloodRequests.filter(req => req.urgency === 'critical').length}
-                  </p>
+                  <p className="text-2xl font-bold text-amber-600">{statsLoading ? '...' : stats.criticalRequests}</p>
+                  <p className="text-xs text-gray-400">Urgent attention needed</p>
                 </CardContent>
               </Card>
             </div>
+
+            {/* Low Stock Alert */}
+            {stats.lowStockTypes.length > 0 && (
+              <Card className="mb-6 border-amber-200 bg-amber-50">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="h-5 w-5 text-amber-600" />
+                    <h3 className="font-semibold text-amber-800">Low Stock Alert</h3>
+                  </div>
+                  <p className="text-sm text-amber-700">
+                    Low stock detected for: {stats.lowStockTypes.join(', ')}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             <Tabs defaultValue="ai-matching" className="w-full">
               <TabsList className="w-full grid grid-cols-3 mb-6">
@@ -322,6 +355,7 @@ const DashboardPage = () => {
                           <tr className="border-b">
                             <th className="text-left py-3">Blood Type</th>
                             <th className="text-left py-3">Units</th>
+                            <th className="text-left py-3">Hospital & Area</th>
                             <th className="text-left py-3">Processed</th>
                             <th className="text-left py-3">Expiration</th>
                             <th className="text-left py-3">Special Attributes</th>
@@ -348,6 +382,15 @@ const DashboardPage = () => {
                                     'text-gray-900'
                                   }`}>
                                     {item.units} units
+                                  </div>
+                                </td>
+                                <td className="py-3">
+                                  <div className="flex items-center text-sm">
+                                    <Hospital className="h-4 w-4 text-blue-600 mr-1" />
+                                    <div>
+                                      <p className="font-medium">{item.hospital}</p>
+                                      <p className="text-xs text-gray-500">Downtown Medical District</p>
+                                    </div>
                                   </div>
                                 </td>
                                 <td className="py-3">
@@ -380,7 +423,7 @@ const DashboardPage = () => {
                           
                           {bloodInventory.length === 0 && (
                             <tr>
-                              <td colSpan={5} className="py-8 text-center text-gray-500">
+                              <td colSpan={6} className="py-8 text-center text-gray-500">
                                 No blood inventory found. Add inventory to get started.
                               </td>
                             </tr>
@@ -395,7 +438,18 @@ const DashboardPage = () => {
               <TabsContent value="requests">
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-xl">Active Blood Requests</CardTitle>
+                    <CardTitle className="text-xl flex items-center justify-between">
+                      <span>Active Blood Requests</span>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={refreshAllData}
+                        disabled={isLoading}
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
+                        Refresh
+                      </Button>
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
@@ -409,9 +463,9 @@ const DashboardPage = () => {
                           }`}
                         >
                           <div className="flex justify-between items-start">
-                            <div>
-                              <div className="flex items-center">
-                                <p className="font-semibold">
+                            <div className="flex-1">
+                              <div className="flex items-center mb-2">
+                                <p className="font-semibold text-lg">
                                   {request.bloodType} • {request.units} Units
                                 </p>
                                 <Badge 
@@ -423,29 +477,87 @@ const DashboardPage = () => {
                                 >
                                   {request.urgency.charAt(0).toUpperCase() + request.urgency.slice(1)}
                                 </Badge>
+                                <Badge variant="outline" className="ml-2 bg-green-50">
+                                  Match: {request.matchPercentage}%
+                                </Badge>
                               </div>
-                              <p className="text-sm text-gray-600">
-                                Created: {format(new Date(request.createdAt), 'MMM d, yyyy')} • 
-                                Needed by: {format(new Date(request.neededBy), 'MMM d, yyyy')}
-                              </p>
-                              <div className="flex items-center mt-1 text-sm text-green-600">
-                                <Hospital className="h-4 w-4 mr-1" />
-                                <span>
-                                  {request.matchPercentage > 90 ? '3+ hospitals matched' :
-                                   request.matchPercentage > 80 ? '2 hospitals matched' :
-                                   request.matchPercentage > 70 ? '1 hospital matched' :
-                                   'Looking for matches...'}
-                                </span>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+                                <div>
+                                  <p className="text-sm text-gray-600 flex items-center">
+                                    <Hospital className="h-4 w-4 mr-1" />
+                                    <span className="font-medium">{request.hospital}</span>
+                                  </p>
+                                  <p className="text-xs text-gray-500 ml-5">Medical Center District</p>
+                                </div>
+                                
+                                <div>
+                                  <p className="text-sm text-gray-600">
+                                    <span className="font-medium">Patient:</span> {request.patientAge}y, {request.patientWeight}kg
+                                  </p>
+                                  <p className="text-xs text-gray-500">{request.medicalCondition}</p>
+                                </div>
                               </div>
+                              
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm text-gray-600">
+                                  <p>Created: {format(new Date(request.createdAt), 'MMM d, yyyy HH:mm')}</p>
+                                  <p>Needed by: {format(new Date(request.neededBy), 'MMM d, yyyy HH:mm')}</p>
+                                </div>
+                                
+                                <div className="flex items-center text-sm">
+                                  <div className={`flex items-center ${
+                                    request.matchPercentage > 90 ? 'text-green-600' :
+                                    request.matchPercentage > 70 ? 'text-amber-600' :
+                                    'text-gray-500'
+                                  }`}>
+                                    <Brain className="h-4 w-4 mr-1" />
+                                    <span>
+                                      {request.matchPercentage > 90 ? '3+ hospitals matched' :
+                                       request.matchPercentage > 70 ? '2 hospitals matched' :
+                                       request.matchPercentage > 50 ? '1 hospital matched' :
+                                       'Looking for matches...'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              {request.specialRequirements && request.specialRequirements.length > 0 && (
+                                <div className="mt-2">
+                                  <p className="text-xs text-gray-500 mb-1">Special Requirements:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {request.specialRequirements.map((req, i) => (
+                                      <Badge key={i} variant="outline" className="text-xs">
+                                        {req.replace('-', ' ')}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                            <Button size="sm" variant="outline">View Matches</Button>
+                            
+                            <div className="ml-4">
+                              <Button size="sm" variant="outline" className="mb-2 w-full">
+                                View Matches
+                              </Button>
+                              <Button size="sm" className="w-full bg-green-600 hover:bg-green-700">
+                                Contact Donors
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))}
 
                       {bloodRequests.length === 0 && (
                         <div className="text-center py-6 text-gray-600">
-                          No active blood requests. Create a request to find matches from other hospitals.
+                          <Hospital className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                          <p className="text-lg font-medium mb-2">No active blood requests</p>
+                          <p className="text-sm text-gray-500 mb-4">
+                            Create a request to find matches from other hospitals using our AI matching system.
+                          </p>
+                          <Button onClick={handleCreateBloodRequest} className="bg-red-600 hover:bg-red-700">
+                            Create Your First Request
+                          </Button>
                         </div>
                       )}
                     </div>

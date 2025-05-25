@@ -48,6 +48,7 @@ export interface AiMatch {
   donorId: string;
   requestId: string;
   hospitalName: string;
+  hospitalAddress?: string;
   bloodType: string;
   bloodRhFactor: 'positive' | 'negative';
   availableUnits: number;

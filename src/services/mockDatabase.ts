@@ -1,6 +1,7 @@
+
 import { v4 as uuidv4 } from 'uuid';
 
-interface Hospital {
+export interface Hospital {
   id: string;
   name: string;
   email: string;
@@ -10,7 +11,7 @@ interface Hospital {
   verified?: boolean;
 }
 
-interface Donor {
+export interface Donor {
   id: string;
   name: string;
   email: string;
@@ -28,7 +29,7 @@ interface Donor {
   };
 }
 
-interface BloodRequest {
+export interface BloodRequest {
   id: string;
   hospital: string;
   bloodType: string;
@@ -37,9 +38,23 @@ interface BloodRequest {
   neededBy: Date;
   medicalCondition: string;
   patientAge: number;
+  patientWeight?: number;
+  specialRequirements?: string[];
+  matchPercentage?: number;
 }
 
-interface InventoryItem {
+export interface BloodInventory {
+  id: string;
+  hospital: string;
+  bloodType: string;
+  rhFactor: 'positive' | 'negative';
+  units: number;
+  donorAge: number;
+  expirationDate: Date;
+  specialAttributes?: string[];
+}
+
+export interface InventoryItem {
   id: string;
   hospitalId: string;
   bloodType: string;
@@ -47,7 +62,26 @@ interface InventoryItem {
   lastUpdated: Date;
 }
 
-interface DonationDrive {
+export interface AiMatch {
+  donorId: string;
+  requestId: string;
+  hospitalName: string;
+  hospitalAddress: string;
+  bloodType: string;
+  bloodRhFactor: string;
+  availableUnits: number;
+  distance: number;
+  matchScore: number;
+  status: 'potential' | 'contacted';
+  specialAttributes?: string[];
+  compatibilityScore?: number;
+  donorAge: number;
+  expiryDays: number;
+  ageCompatibilityScore?: number;
+  medicalCompatibilityScore?: number;
+}
+
+export interface DonationDrive {
   id: string;
   eventName: string;
   description: string;
@@ -60,7 +94,7 @@ interface DonationDrive {
   status: 'upcoming' | 'active' | 'completed';
 }
 
-interface Transaction {
+export interface Transaction {
   id: string;
   donorId: string;
   hospitalId: string;
@@ -69,7 +103,7 @@ interface Transaction {
   transactionDate: Date;
 }
 
-interface Notification {
+export interface Notification {
   id: string;
   userId: string;
   type: 'blood_request' | 'donation_drive' | 'general';
@@ -84,6 +118,7 @@ class MockDatabaseService {
     donors: [] as Donor[],
     bloodRequests: [] as BloodRequest[],
     inventory: [] as InventoryItem[],
+    bloodInventoryDetails: [] as BloodInventory[],
     donationDrives: [] as DonationDrive[],
     transactions: [] as Transaction[],
     notifications: [] as Notification[],
@@ -111,6 +146,21 @@ class MockDatabaseService {
     return [...this.data.hospitals];
   }
 
+  async getPendingHospitals(): Promise<Hospital[]> {
+    await this.simulateDelay();
+    return this.data.hospitals.filter(h => !h.verified);
+  }
+
+  async getAllHospitalsWithData(): Promise<Hospital[]> {
+    await this.simulateDelay();
+    return [...this.data.hospitals];
+  }
+
+  async getHospitalProfile(hospitalId: string): Promise<Hospital | null> {
+    await this.simulateDelay();
+    return this.data.hospitals.find(h => h.id === hospitalId) || null;
+  }
+
   async getDonors(): Promise<Donor[]> {
     await this.simulateDelay();
     return [...this.data.donors];
@@ -121,9 +171,24 @@ class MockDatabaseService {
     return [...this.data.bloodRequests];
   }
 
+  async getHospitalBloodRequests(hospitalName: string): Promise<BloodRequest[]> {
+    await this.simulateDelay();
+    return this.data.bloodRequests.filter(req => req.hospital === hospitalName);
+  }
+
   async getInventory(): Promise<InventoryItem[]> {
     await this.simulateDelay();
     return [...this.data.inventory];
+  }
+
+  async getBloodInventoryDetails(): Promise<BloodInventory[]> {
+    await this.simulateDelay();
+    return [...this.data.bloodInventoryDetails];
+  }
+
+  async getHospitalBloodInventory(hospitalName: string): Promise<BloodInventory[]> {
+    await this.simulateDelay();
+    return this.data.bloodInventoryDetails.filter(inv => inv.hospital === hospitalName);
   }
 
   async getDonationDrives(): Promise<DonationDrive[]> {
@@ -157,13 +222,12 @@ class MockDatabaseService {
     }
   }
 
-  async registerDonor(donorData: Omit<Donor, 'id' | 'isEligible'>): Promise<{ success: boolean; error?: string }> {
+  async registerDonor(donorData: Omit<Donor, 'id'>): Promise<{ success: boolean; error?: string }> {
     try {
       await this.simulateDelay();
       const newDonor: Donor = {
         id: uuidv4(),
         ...donorData,
-        isEligible: true
       };
       this.data.donors.push(newDonor);
       return { success: true };
@@ -188,18 +252,49 @@ class MockDatabaseService {
     }
   }
 
-  async createBloodRequest(requestData: Omit<BloodRequest, 'id'>): Promise<{ success: boolean; error?: string }> {
+  async deleteHospital(hospitalId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await this.simulateDelay();
+      const index = this.data.hospitals.findIndex(h => h.id === hospitalId);
+      if (index === -1) {
+        return { success: false, error: 'Hospital not found' };
+      }
+      this.data.hospitals.splice(index, 1);
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error deleting hospital:", error);
+      return { success: false, error: error.message || 'Failed to delete hospital' };
+    }
+  }
+
+  async createBloodRequest(requestData: Omit<BloodRequest, 'id'>): Promise<{ success: boolean; requestId?: string; error?: string }> {
     try {
       await this.simulateDelay();
       const newRequest: BloodRequest = {
         id: uuidv4(),
         ...requestData,
+        matchPercentage: 0
       };
       this.data.bloodRequests.push(newRequest);
-      return { success: true };
+      return { success: true, requestId: newRequest.id };
     } catch (error: any) {
       console.error("Error creating blood request:", error);
       return { success: false, error: error.message || 'Failed to create blood request' };
+    }
+  }
+
+  async updateBloodRequest(requestId: string, updates: Partial<BloodRequest>): Promise<{ success: boolean; error?: string }> {
+    try {
+      await this.simulateDelay();
+      const requestIndex = this.data.bloodRequests.findIndex(req => req.id === requestId);
+      if (requestIndex === -1) {
+        return { success: false, error: 'Blood request not found' };
+      }
+      this.data.bloodRequests[requestIndex] = { ...this.data.bloodRequests[requestIndex], ...updates };
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error updating blood request:", error);
+      return { success: false, error: error.message || 'Failed to update blood request' };
     }
   }
 
@@ -224,6 +319,33 @@ class MockDatabaseService {
     } catch (error: any) {
       console.error("Error updating inventory:", error);
       return { success: false, error: error.message || 'Failed to update inventory' };
+    }
+  }
+
+  async addBloodInventory(inventoryData: Omit<BloodInventory, 'id'>): Promise<{ success: boolean; error?: string }> {
+    try {
+      await this.simulateDelay();
+      const newInventory: BloodInventory = {
+        id: uuidv4(),
+        ...inventoryData,
+      };
+      this.data.bloodInventoryDetails.push(newInventory);
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error adding blood inventory:", error);
+      return { success: false, error: error.message || 'Failed to add blood inventory' };
+    }
+  }
+
+  async contactHospital(hospitalId: string, requestId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      await this.simulateDelay();
+      // Simulate hospital contact logic
+      console.log(`Contacting hospital ${hospitalId} for request ${requestId}`);
+      return { success: true };
+    } catch (error: any) {
+      console.error("Error contacting hospital:", error);
+      return { success: false, error: error.message || 'Failed to contact hospital' };
     }
   }
 
@@ -289,6 +411,23 @@ class MockDatabaseService {
       console.error("Error sending notification:", error);
       return { success: false, error: error.message || 'Failed to send notification' };
     }
+  }
+
+  async authenticateGovernment(email: string, password: string): Promise<boolean> {
+    await this.simulateDelay();
+    return email === this.governmentCredentials.email && password === this.governmentCredentials.password;
+  }
+
+  async authenticateHospital(email: string, password: string): Promise<Hospital | null> {
+    await this.simulateDelay();
+    const hospital = this.data.hospitals.find(h => h.email === email && h.verified);
+    return hospital || null;
+  }
+
+  async authenticateDonor(email: string, password: string): Promise<Donor | null> {
+    await this.simulateDelay();
+    const donor = this.data.donors.find(d => d.email === email);
+    return donor || null;
   }
 }
 

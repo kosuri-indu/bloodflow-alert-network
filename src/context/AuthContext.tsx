@@ -278,41 +278,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const register = async (userData: any, type: UserType): Promise<boolean> => {
     try {
-      if (type !== 'hospital' && type !== 'donor') {
-        toast({
-          title: "Invalid User Type",
-          description: "Only hospitals and donors can register to this system.",
-          variant: "destructive",
-        });
-        return false;
+      console.log("AuthContext register called with:", { userData, userType });
+      
+      if (userType === 'hospital') {
+        const hospitalData = {
+          name: userData.hospitalName,
+          email: userData.email,
+          contactPerson: userData.contactPerson || userData.hospitalName,
+          registrationId: userData.registrationId || `REG-${Date.now()}`,
+          address: userData.address || "Address not provided"
+        };
+        
+        const result = await mockDatabaseService.registerHospital(hospitalData);
+        
+        if (result.success) {
+          toast({
+            title: "Registration Successful",
+            description: "Hospital registration submitted for government approval.",
+          });
+          return true;
+        } else {
+          throw new Error(result.error || 'Hospital registration failed');
+        }
+      } else if (userType === 'donor') {
+        const donorData = {
+          name: userData.name,
+          email: userData.email,
+          phone: userData.phone,
+          bloodType: userData.bloodType,
+          rhFactor: userData.rhFactor,
+          age: userData.age,
+          weight: userData.weight,
+          address: userData.address,
+          isEligible: true,
+          notificationPreferences: userData.notificationPreferences || {
+            urgentRequests: true,
+            donationDrives: true,
+            general: false
+          }
+        };
+        
+        const result = await mockDatabaseService.registerDonor(donorData);
+        
+        if (result.success) {
+          toast({
+            title: "Registration Successful",
+            description: "Donor account created successfully.",
+          });
+          return true;
+        } else {
+          throw new Error(result.error || 'Donor registration failed');
+        }
       }
       
-      const result = type === 'hospital' ? await registerHospital(userData) : await registerDonor(userData);
-      
-      if (!result.success) {
-        toast({
-          title: "Registration Failed",
-          description: result.error || "Failed to register. Please try again.",
-          variant: "destructive",
-        });
-        return false;
-      }
-      
-      toast({
-        title: "Registration Submitted",
-        description: type === 'hospital' 
-          ? "Your hospital registration is pending verification by government health officials. We'll notify you once it's approved."
-          : "Your donor registration is complete! You can now login to access your dashboard.",
-      });
-      
-      refreshData();
-      
-      return true;
+      return false;
     } catch (error) {
-      console.error('Registration error:', error);
+      console.error("Registration error:", error);
       toast({
         title: "Registration Failed",
-        description: error instanceof Error ? error.message : "Unknown error occurred",
+        description: error instanceof Error ? error.message : "Registration failed",
         variant: "destructive",
       });
       return false;

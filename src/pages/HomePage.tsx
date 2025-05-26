@@ -32,7 +32,7 @@ const HomePage = () => {
   const totalUnits = bloodInventory?.reduce((sum, item) => sum + item.units, 0) || 0;
   const totalHospitals = hospitals?.length || 0;
   const criticalRequests = bloodRequests?.filter(req => req.urgency === 'critical').length || 0;
-  const pendingRequests = bloodRequests?.filter(req => req.urgency === 'routine' || req.urgency === 'urgent' || req.urgency === 'critical').length || 0;
+  const pendingRequests = bloodRequests?.length || 0; // Fix: removed status filter since BloodRequest doesn't have status property
 
   // Calculate blood type availability
   const bloodTypeStats = bloodInventory?.reduce((acc, item) => {

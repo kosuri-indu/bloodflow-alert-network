@@ -17,13 +17,15 @@ import {
   Brain,
   MapPin,
   Clock,
-  Phone
+  Phone,
+  Bell
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import mockDatabaseService, { Hospital as HospitalType, BloodInventory, BloodRequest } from "@/services/mockDatabase";
 import { format, differenceInDays } from 'date-fns';
 import { useAuth } from '@/context/AuthContext';
 import { useAiMatching } from '@/hooks/useAiMatching';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface HospitalWithData {
   hospital: HospitalType;
@@ -41,6 +43,7 @@ const GovernmentDashboardPage = () => {
   const { toast } = useToast();
   const { approveHospital, logout, currentUser, refreshData } = useAuth();
   const { runAiMatching, contactHospital, matches, isProcessing } = useAiMatching();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   
   const fetchData = async () => {
     setIsLoading(true);
@@ -224,6 +227,16 @@ const GovernmentDashboardPage = () => {
               <p className="text-gray-500">
                 Central coordination of blood bank network and AI-powered matching
               </p>
+              {unreadCount > 0 && (
+                <div className="mt-2 flex items-center gap-2">
+                  <Badge className="bg-red-500">
+                    {unreadCount} new notifications
+                  </Badge>
+                  <Button size="sm" variant="outline" onClick={markAllAsRead}>
+                    Mark all as read
+                  </Button>
+                </div>
+              )}
             </div>
             
             <div className="flex flex-col items-end gap-3">
@@ -324,8 +337,11 @@ const GovernmentDashboardPage = () => {
         </div>
         
         <Tabs defaultValue="matching" className="w-full">
-          <TabsList className="w-full bg-white rounded-md shadow-sm grid grid-cols-4 p-2">
+          <TabsList className="w-full bg-white rounded-md shadow-sm grid grid-cols-5 p-2">
             <TabsTrigger value="matching">AI Blood Matching</TabsTrigger>
+            <TabsTrigger value="notifications">
+              Notifications {unreadCount > 0 && `(${unreadCount})`}
+            </TabsTrigger>
             <TabsTrigger value="hospitals">All Hospitals</TabsTrigger>
             <TabsTrigger value="pending">Pending ({pendingHospitals.length})</TabsTrigger>
             <TabsTrigger value="inventory">System Inventory</TabsTrigger>
@@ -515,6 +531,58 @@ const GovernmentDashboardPage = () => {
                     <p className="text-lg font-medium mb-2">No active blood requests</p>
                     <p className="text-sm text-gray-500">
                       Blood requests from hospitals will appear here for AI matching.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Bell className="mr-2 h-5 w-5 text-blue-500" />
+                  System Notifications
+                </CardTitle>
+                <CardDescription>
+                  Real-time updates from hospitals and blood matching system.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {notifications.length > 0 ? (
+                  <div className="space-y-3">
+                    {notifications.map((notification) => (
+                      <div 
+                        key={notification.id}
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                          !notification.read ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'
+                        }`}
+                        onClick={() => markAsRead(notification.id)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-semibold">{notification.title}</h4>
+                            <p className="text-gray-600 text-sm mt-1">{notification.message}</p>
+                            {notification.hospitalName && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                From: {notification.hospitalName}
+                              </p>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500 ml-4">
+                            {format(notification.timestamp, 'MMM d, HH:mm')}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-gray-600">
+                    <Bell className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                    <p className="text-lg font-medium mb-2">No notifications</p>
+                    <p className="text-sm text-gray-500">
+                      System notifications will appear here.
                     </p>
                   </div>
                 )}

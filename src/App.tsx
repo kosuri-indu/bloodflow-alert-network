@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,11 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import HomePage from "./pages/HomePage";
-import RegisterPage from "./pages/RegisterPage";
+import UnifiedRegisterPage from "./pages/UnifiedRegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import GovernmentLoginPage from "./pages/GovernmentLoginPage";
 import GovernmentDashboardPage from "./pages/GovernmentDashboardPage";
-import DonorRegisterPage from "./pages/DonorRegisterPage";
 import DonorDashboardPage from "./pages/DonorDashboardPage";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
@@ -69,9 +67,8 @@ const AppRoutes = () => (
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/register" element={<UnifiedRegisterPage />} />
           <Route path="/gov-login" element={<GovernmentLoginPage />} />
-          <Route path="/donor-register" element={<DonorRegisterPage />} />
           <Route path="/dashboard" element={
             <HospitalProtectedRoute>
               <DashboardPage />

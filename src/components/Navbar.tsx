@@ -94,13 +94,7 @@ const Navbar: React.FC = () => {
                   to="/register" 
                   className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Hospital Portal
-                </Link>
-                <Link 
-                  to="/donor-register" 
-                  className="text-red-600 hover:text-red-700 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Donor Portal
+                  Join Network
                 </Link>
                 <Link 
                   to="/gov-login" 
@@ -170,13 +164,7 @@ const Navbar: React.FC = () => {
                         to="/register" 
                         className="text-gray-700 hover:text-red-600 px-4 py-2 rounded-md text-base font-medium text-center"
                       >
-                        Hospital Portal
-                      </Link>
-                      <Link 
-                        to="/donor-register" 
-                        className="text-red-600 hover:text-red-700 px-4 py-2 rounded-md text-base font-medium text-center"
-                      >
-                        Donor Portal
+                        Join Network
                       </Link>
                       <Link 
                         to="/gov-login" 

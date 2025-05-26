@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 
 // Define data structures
@@ -282,8 +281,32 @@ class MockDatabaseService {
     };
   }
 
-  async verifyHospital(hospitalId: string): Promise<boolean> {
-    return await this.approveHospital(hospitalId);
+  async verifyHospital(hospitalId: string): Promise<{ success: boolean; error?: string; hospitalName?: string }> {
+    try {
+      const pendingHospitals = this.getFromStorage('pendingHospitals') || [];
+      const approvedHospitalIndex = pendingHospitals.findIndex((h: Hospital) => h.id === hospitalId);
+      
+      if (approvedHospitalIndex === -1) {
+        console.log(`Hospital not found in pending registrations: ${hospitalId}`);
+        return { success: false, error: 'Hospital not found in pending registrations' };
+      }
+      
+      const approvedHospital = pendingHospitals[approvedHospitalIndex];
+      approvedHospital.verified = true;
+      
+      // Remove from pending and add to verified hospitals
+      const updatedPendingHospitals = pendingHospitals.filter((h: Hospital) => h.id !== hospitalId);
+      this.setInStorage('pendingHospitals', updatedPendingHospitals);
+      
+      const hospitals = this.getFromStorage('hospitals') || [];
+      this.setInStorage('hospitals', [...hospitals, approvedHospital]);
+      
+      console.log(`✅ Hospital approved: ${approvedHospital.name}`);
+      return { success: true, hospitalName: approvedHospital.name };
+    } catch (error) {
+      console.error(`Error verifying hospital ${hospitalId}:`, error);
+      return { success: false, error: 'Failed to verify hospital' };
+    }
   }
 
   // Blood inventory functions

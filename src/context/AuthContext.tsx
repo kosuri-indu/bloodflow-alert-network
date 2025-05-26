@@ -63,8 +63,9 @@ const authenticateUser = async (email: string, password: string, userType: UserT
         throw new Error('Invalid credentials or hospital not found');
       }
       
+      // Only allow verified hospitals to login
       if (!hospital.verified) {
-        throw new Error('Your hospital account is pending verification by government health officials');
+        throw new Error('Your hospital account is pending verification by government health officials. Please wait for approval before attempting to login.');
       }
       
       return {

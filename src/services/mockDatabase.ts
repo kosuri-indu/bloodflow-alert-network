@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 
 // Define data structures
@@ -19,6 +20,7 @@ interface BloodInventory {
   rhFactor: string;
   units: number;
   expirationDate: Date;
+  processedDate: Date;
   donorAge: number;
   specialAttributes?: string[];
 }
@@ -109,6 +111,7 @@ class MockDatabaseService {
           rhFactor: 'positive',
           units: 15,
           expirationDate: new Date(new Date().setDate(new Date().getDate() + 30)),
+          processedDate: new Date(new Date().setDate(new Date().getDate() - 5)),
           donorAge: 25,
           specialAttributes: ['irradiated', 'leukoreduced']
         },
@@ -119,6 +122,7 @@ class MockDatabaseService {
           rhFactor: 'negative',
           units: 8,
           expirationDate: new Date(new Date().setDate(new Date().getDate() + 20)),
+          processedDate: new Date(new Date().setDate(new Date().getDate() - 3)),
           donorAge: 30,
           specialAttributes: ['cmv-negative']
         },
@@ -129,6 +133,7 @@ class MockDatabaseService {
           rhFactor: 'positive',
           units: 12,
           expirationDate: new Date(new Date().setDate(new Date().getDate() + 45)),
+          processedDate: new Date(new Date().setDate(new Date().getDate() - 7)),
           donorAge: 22
         }
       ]);
@@ -255,6 +260,32 @@ class MockDatabaseService {
     );
   }
 
+  async getAllData(): Promise<{ hospitals: Hospital[]; inventory: BloodInventory[]; requests: BloodRequest[]; }> {
+    const hospitals = await this.getRegisteredHospitals();
+    const inventory = await this.getBloodInventoryDetails();
+    const requests = await this.getBloodRequests();
+    return { hospitals, inventory, requests };
+  }
+
+  async getHospitalProfile(): Promise<Hospital> {
+    // For demo purposes, return the first hospital
+    const hospitals = await this.getRegisteredHospitals();
+    return hospitals[0] || {
+      id: 'default',
+      name: 'Default Hospital',
+      address: '123 Default St',
+      contactPerson: 'Dr. Default',
+      email: 'default@hospital.com',
+      registrationId: 'DEF123',
+      createdAt: new Date(),
+      verified: true
+    };
+  }
+
+  async verifyHospital(hospitalId: string): Promise<boolean> {
+    return await this.approveHospital(hospitalId);
+  }
+
   // Blood inventory functions
   async addBloodInventory(hospitalName: string, inventory: Omit<BloodInventory, 'id' | 'hospital'>): Promise<BloodInventory> {
     const newInventory: BloodInventory = {
@@ -325,6 +356,40 @@ class MockDatabaseService {
     }, 1000);
 
     return newRequest;
+  }
+
+  async createBloodRequest(request: Omit<BloodRequest, 'id' | 'createdAt' | 'matchPercentage'>): Promise<{ success: boolean; requestId?: string; error?: string }> {
+    try {
+      const newRequest: BloodRequest = {
+        id: uuidv4(),
+        ...request,
+        createdAt: new Date(),
+        matchPercentage: 0
+      };
+
+      const hospitalKey = `bloodRequests_${request.hospital}`;
+      const existingRequests = this.getFromStorage(hospitalKey) || [];
+      const updatedRequests = [...existingRequests, newRequest];
+      this.setInStorage(hospitalKey, updatedRequests);
+
+      // Also add to global requests
+      const allRequests = this.getFromStorage('allBloodRequests') || [];
+      this.setInStorage('allBloodRequests', [...allRequests, newRequest]);
+
+      console.log(`📋 New blood request created: ${newRequest.bloodType} for ${request.hospital}`);
+
+      // Trigger auto-matching after a short delay
+      setTimeout(() => {
+        import('./autoMatchingService').then(({ autoMatchingService }) => {
+          autoMatchingService.processNewRequest(newRequest.id);
+        });
+      }, 1000);
+
+      return { success: true, requestId: newRequest.id };
+    } catch (error) {
+      console.error('Error creating blood request:', error);
+      return { success: false, error: 'Failed to create blood request' };
+    }
   }
 
   async getBloodRequests(): Promise<BloodRequest[]> {

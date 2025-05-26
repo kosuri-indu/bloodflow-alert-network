@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -152,14 +151,13 @@ const DashboardPage = () => {
         bloodType: newInventoryForm.bloodType,
         rhFactor: newInventoryForm.rhFactor as 'positive' | 'negative',
         units: newInventoryForm.units,
-        hospital: hospitalProfile.name,
         processedDate: new Date(newInventoryForm.processedDate),
         expirationDate: new Date(newInventoryForm.expirationDate),
         donorAge: Number(newInventoryForm.donorAge),
         specialAttributes: newInventoryForm.specialAttributes
       };
 
-      await mockDatabaseService.addBloodInventory(newInventory);
+      await mockDatabaseService.addBloodInventory(hospitalProfile.name, newInventory);
       await refreshAllData();
 
       toast({

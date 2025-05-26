@@ -1,10 +1,9 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
 import mockDatabaseService from '../services/mockDatabase';
 
-type UserType = 'hospital' | 'government' | null;
+type UserType = 'hospital' | 'government' | 'donor' | null;
 
 interface AuthUser {
   id: string;
@@ -80,6 +79,25 @@ const authenticateUser = async (email: string, password: string, userType: UserT
         }
       };
     }
+
+    if (userType === 'donor') {
+      const donors = await mockDatabaseService.getDonors();
+      const donor = donors.find(d => d.email.toLowerCase() === email.toLowerCase());
+      
+      if (!donor) {
+        throw new Error('Invalid credentials or donor not found');
+      }
+      
+      return {
+        success: true,
+        user: {
+          id: donor.id,
+          name: donor.name,
+          email: donor.email,
+          type: 'donor' as UserType
+        }
+      };
+    }
     
     throw new Error('Invalid user type');
   } catch (error) {
@@ -124,6 +142,49 @@ const registerHospital = async (userData: any) => {
   }
 };
 
+const registerDonor = async (userData: any) => {
+  try {
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    const requiredFields = ['name', 'email', 'password', 'phone', 'bloodType', 'age', 'weight'];
+    for (const field of requiredFields) {
+      if (!userData[field]) {
+        throw new Error(`${field.charAt(0).toUpperCase() + field.slice(1)} is required`);
+      }
+    }
+    
+    const donors = await mockDatabaseService.getDonors();
+    
+    if (donors.some(d => d.email.toLowerCase() === userData.email.toLowerCase())) {
+      throw new Error('A donor with this email already exists');
+    }
+    
+    await mockDatabaseService.registerDonor({
+      name: userData.name,
+      email: userData.email,
+      phone: userData.phone,
+      bloodType: userData.bloodType.split(' ')[0],
+      rhFactor: userData.bloodType.includes('+') ? 'positive' : 'negative',
+      age: parseInt(userData.age),
+      weight: parseInt(userData.weight),
+      address: userData.address || '',
+      isEligible: true,
+      notificationPreferences: {
+        urgentRequests: true,
+        donationDrives: true,
+        general: true
+      }
+    });
+    
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Registration failed'
+    };
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -142,7 +203,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     console.log('AuthContext - Checking stored auth:', { storedUser, storedUserType });
     
-    if (storedUser && (storedUserType === 'hospital' || storedUserType === 'government')) {
+    if (storedUser && (storedUserType === 'hospital' || storedUserType === 'government' || storedUserType === 'donor')) {
       try {
         const user = JSON.parse(storedUser);
         setCurrentUser(user);
@@ -158,10 +219,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const login = async (email: string, password: string, type: UserType, extraData?: any): Promise<boolean> => {
     try {
-      if (type !== 'hospital' && type !== 'government') {
+      if (type !== 'hospital' && type !== 'government' && type !== 'donor') {
         toast({
           title: "Invalid User Type",
-          description: "Only hospitals and government officials can login to this system.",
+          description: "Only hospitals, government officials, and donors can login to this system.",
           variant: "destructive",
         });
         return false;
@@ -188,13 +249,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         title: "Login Successful",
         description: type === 'hospital' 
           ? `Welcome back, ${result.user.hospitalName}!` 
-          : "Welcome, Government Health Official",
+          : type === 'government'
+          ? "Welcome, Government Health Official"
+          : `Welcome back, ${result.user.name}!`,
       });
       
       refreshData();
       
       if (type === 'government') {
         navigate('/government-dashboard');
+      } else if (type === 'donor') {
+        navigate('/donor-dashboard');
       } else {
         navigate('/dashboard');
       }
@@ -213,16 +278,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const register = async (userData: any, type: UserType): Promise<boolean> => {
     try {
-      if (type !== 'hospital') {
+      if (type !== 'hospital' && type !== 'donor') {
         toast({
           title: "Invalid User Type",
-          description: "Only hospitals can register to this system.",
+          description: "Only hospitals and donors can register to this system.",
           variant: "destructive",
         });
         return false;
       }
       
-      const result = await registerHospital(userData);
+      const result = type === 'hospital' ? await registerHospital(userData) : await registerDonor(userData);
       
       if (!result.success) {
         toast({
@@ -235,7 +300,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       toast({
         title: "Registration Submitted",
-        description: "Your hospital registration is pending verification by government health officials. We'll notify you once it's approved.",
+        description: type === 'hospital' 
+          ? "Your hospital registration is pending verification by government health officials. We'll notify you once it's approved."
+          : "Your donor registration is complete! You can now login to access your dashboard.",
       });
       
       refreshData();

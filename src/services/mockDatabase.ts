@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 
 // Define data structures
@@ -75,6 +74,17 @@ interface DonationDrive {
   createdAt: Date;
 }
 
+interface MonetaryDonation {
+  id: string;
+  donorId: string;
+  donorName: string;
+  amount: number;
+  currency: string;
+  purpose: string;
+  createdAt: Date;
+  status: 'pending' | 'completed' | 'failed';
+}
+
 interface AiMatch {
   donorId: string;
   requestId: string;
@@ -119,6 +129,10 @@ class MockDatabaseService {
 
     if (!this.getFromStorage('donationDrives')) {
       this.setInStorage('donationDrives', []);
+    }
+
+    if (!this.getFromStorage('monetaryDonations')) {
+      this.setInStorage('monetaryDonations', []);
     }
   }
 
@@ -469,6 +483,57 @@ class MockDatabaseService {
     }
   }
 
+  // Monetary donation functions
+  async createMonetaryDonation(donation: Omit<MonetaryDonation, 'id' | 'createdAt' | 'status'>): Promise<MonetaryDonation> {
+    const newDonation: MonetaryDonation = {
+      id: uuidv4(),
+      ...donation,
+      status: 'pending',
+      createdAt: new Date()
+    };
+
+    const donations = this.getFromStorage('monetaryDonations') || [];
+    this.setInStorage('monetaryDonations', [...donations, newDonation]);
+
+    console.log(`💰 New monetary donation: $${newDonation.amount} from ${newDonation.donorName}`);
+    return newDonation;
+  }
+
+  async getMonetaryDonations(): Promise<MonetaryDonation[]> {
+    return this.getFromStorage('monetaryDonations') || [];
+  }
+
+  async getDonorMonetaryDonations(donorId: string): Promise<MonetaryDonation[]> {
+    const donations = await this.getMonetaryDonations();
+    return donations.filter(d => d.donorId === donorId);
+  }
+
+  // Notification functions
+  async notifyDonorsOfUrgentRequest(requestId: string): Promise<void> {
+    const requests = await this.getBloodRequests();
+    const request = requests.find(r => r.id === requestId);
+    
+    if (!request || request.urgency !== 'critical') return;
+    
+    const requestBloodType = request.bloodType.split(' ')[0];
+    const rhFactor = request.bloodType.includes('+') ? 'positive' : 'negative';
+    
+    const eligibleDonors = await this.getEligibleDonorsByBloodType(requestBloodType, rhFactor);
+    
+    if (eligibleDonors.length > 0) {
+      console.log(`🚨 Notifying ${eligibleDonors.length} eligible donors about critical request for ${request.bloodType}`);
+      // Here you would send actual notifications
+    }
+  }
+
+  async sendDonationDriveReminders(): Promise<void> {
+    const drives = await this.getDonationDrives();
+    const upcomingDrives = drives.filter(d => d.status === 'upcoming' && new Date(d.date) > new Date());
+    
+    console.log(`📢 Sending reminders for ${upcomingDrives.length} upcoming donation drives`);
+    // Here you would send actual notifications
+  }
+
   // AI Matching simulation with enhanced logic
   async findPotentialMatches(requestId: string): Promise<AiMatch[]> {
     const bloodRequests = await this.getBloodRequests();
@@ -582,12 +647,12 @@ class MockDatabaseService {
     return Math.min(100, score);
   }
 
-  private async triggerAutoMatching(): void {
+  private async triggerAutoMatching(): Promise<void> {
     console.log('🤖 Triggering auto-matching for new inventory/requests...');
     // This would trigger the auto-matching service
   }
 
-  private async notifyDonors(request: BloodRequest): void {
+  private async notifyDonors(request: BloodRequest): Promise<void> {
     const requestBloodType = request.bloodType.split(' ')[0];
     const rhFactor = request.bloodType.includes('+') ? 'positive' : 'negative';
     
@@ -612,4 +677,4 @@ class MockDatabaseService {
 
 const mockDatabaseService = new MockDatabaseService();
 export default mockDatabaseService;
-export type { Hospital, BloodInventory, BloodRequest, AiMatch, Donor, DonationDrive };
+export type { Hospital, BloodInventory, BloodRequest, AiMatch, Donor, DonationDrive, MonetaryDonation };

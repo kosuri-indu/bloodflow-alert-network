@@ -105,7 +105,7 @@ const AiBloodMatchingSystem = () => {
         patientAge: requestForm.patientAge ? Number(requestForm.patientAge) : 0,
         patientWeight: requestForm.patientWeight ? Number(requestForm.patientWeight) : 0,
         medicalCondition: requestForm.medicalCondition || "",
-        specialRequirements: requestForm.specialRequirements.length > 0 ? requestForm.specialRequirements : undefined
+        specialRequirements: requestForm.specialRequirements.length > 0 ? requestForm.specialRequirements : []
       };
       
       const result = await mockDatabaseService.createBloodRequest(newRequest as any);
@@ -377,18 +377,18 @@ const AiBloodMatchingSystem = () => {
                   {matches.map((match) => (
                     <Card key={`${match.donorId}-${match.requestId}`} className="overflow-hidden">
                       <div className={`flex items-center px-4 py-2 
-                        ${match.compatibilityScore === 100 ? 'bg-green-50 border-b border-green-100' :
-                         match.compatibilityScore >= 90 ? 'bg-blue-50 border-b border-blue-100' : 
+                        ${(match.compatibilityScore || 0) === 100 ? 'bg-green-50 border-b border-green-100' :
+                         (match.compatibilityScore || 0) >= 90 ? 'bg-blue-50 border-b border-blue-100' : 
                          'bg-amber-50 border-b border-amber-100'}`}
                       >
                         <Hospital className="h-5 w-5 text-slate-600 mr-2" />
                         <h4 className="font-medium">{match.hospitalName}</h4>
                         <div className="ml-auto flex items-center gap-2">
                           <Badge 
-                            variant={match.compatibilityScore === 100 ? 'default' : 
-                                   match.compatibilityScore >= 90 ? 'secondary' : 'outline'}
-                            className={match.compatibilityScore === 100 ? 'bg-green-600' : 
-                                     match.compatibilityScore >= 90 ? 'bg-blue-600' : ''}
+                            variant={(match.compatibilityScore || 0) === 100 ? 'default' : 
+                                   (match.compatibilityScore || 0) >= 90 ? 'secondary' : 'outline'}
+                            className={(match.compatibilityScore || 0) === 100 ? 'bg-green-600' : 
+                                     (match.compatibilityScore || 0) >= 90 ? 'bg-blue-600' : ''}
                           >
                             {formatCompatibilityDisplay(match.compatibilityScore || 0)}
                           </Badge>
@@ -405,7 +405,7 @@ const AiBloodMatchingSystem = () => {
                             <div className="flex items-center">
                               <DropletIcon className="h-5 w-5 text-red-600 mr-2" />
                               <span className="font-medium">
-                                {match.bloodType} {match.bloodRhFactor === 'positive' ? 'Rh+ ('+match.bloodType+'+)' : 'Rh- ('+match.bloodType+'-)'} · {match.availableUnits} units
+                                {match.bloodType} {(match.bloodRhFactor || 'positive') === 'positive' ? 'Rh+ ('+match.bloodType+'+)' : 'Rh- ('+match.bloodType+'-)'} · {match.availableUnits} units
                               </span>
                             </div>
                           </div>
@@ -436,7 +436,7 @@ const AiBloodMatchingSystem = () => {
                       <CardFooter className="flex justify-end py-3 border-t bg-gray-50">
                         <Button 
                           onClick={() => handleContactHospital(match)} 
-                          disabled={match.status !== 'potential'}
+                          disabled={match.status === 'contacted'}
                           className="flex items-center gap-1"
                         >
                           {match.status === 'contacted' ? (

@@ -10,6 +10,8 @@ import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
 import GovernmentLoginPage from "./pages/GovernmentLoginPage";
 import GovernmentDashboardPage from "./pages/GovernmentDashboardPage";
+import DonorRegisterPage from "./pages/DonorRegisterPage";
+import DonorDashboardPage from "./pages/DonorDashboardPage";
 import NotFound from "./pages/NotFound";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
@@ -47,6 +49,18 @@ const GovernmentProtectedRoute = ({ children }: { children: React.ReactNode }) =
   return <>{children}</>;
 };
 
+// Protected route for donors
+const DonorProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { isAuthenticated, userType } = useAuth();
+  
+  // Only donors are allowed to access donor routes
+  if (!isAuthenticated || userType !== 'donor') {
+    return <Navigate to="/donor-register" />;
+  }
+  
+  return <>{children}</>;
+};
+
 // The Routes component that uses AuthProvider
 const AppRoutes = () => (
   <AuthProvider>
@@ -57,6 +71,7 @@ const AppRoutes = () => (
           <Route path="/" element={<HomePage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/gov-login" element={<GovernmentLoginPage />} />
+          <Route path="/donor-register" element={<DonorRegisterPage />} />
           <Route path="/dashboard" element={
             <HospitalProtectedRoute>
               <DashboardPage />
@@ -66,6 +81,11 @@ const AppRoutes = () => (
             <GovernmentProtectedRoute>
               <GovernmentDashboardPage />
             </GovernmentProtectedRoute>
+          } />
+          <Route path="/donor-dashboard" element={
+            <DonorProtectedRoute>
+              <DonorDashboardPage />
+            </DonorProtectedRoute>
           } />
           <Route path="*" element={<NotFound />} />
         </Routes>

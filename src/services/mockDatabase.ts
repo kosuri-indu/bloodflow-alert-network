@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 
 // Define data structures
@@ -39,6 +40,41 @@ interface BloodRequest {
   matchPercentage: number;
 }
 
+interface Donor {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  bloodType: string;
+  rhFactor: string;
+  age: number;
+  weight: number;
+  address: string;
+  lastDonation?: Date;
+  isEligible: boolean;
+  createdAt: Date;
+  notificationPreferences: {
+    urgentRequests: boolean;
+    donationDrives: boolean;
+    general: boolean;
+  };
+}
+
+interface DonationDrive {
+  id: string;
+  organizerName: string;
+  organizerEmail: string;
+  eventName: string;
+  description: string;
+  date: Date;
+  location: string;
+  targetBloodTypes: string[];
+  expectedDonors: number;
+  registeredDonors: number;
+  status: 'upcoming' | 'active' | 'completed';
+  createdAt: Date;
+}
+
 interface AiMatch {
   donorId: string;
   requestId: string;
@@ -64,111 +100,25 @@ class MockDatabaseService {
   constructor() {
     this.localStorage = window.localStorage;
     
-    // Initialize hospitals if not already present
+    // Initialize with empty data - user will add their own
     if (!this.getFromStorage('hospitals')) {
-      this.setInStorage('hospitals', [
-        {
-          id: 'hospital-1',
-          name: 'City General Hospital',
-          address: '123 Main St, Anytown',
-          contactPerson: 'Dr. Smith',
-          email: 'info@citygeneral.com',
-          registrationId: 'CGH123',
-          createdAt: new Date(),
-          verified: true
-        },
-        {
-          id: 'hospital-2',
-          name: 'Regional Medical Center',
-          address: '456 Oak Ave, Anytown',
-          contactPerson: 'Dr. Johnson',
-          email: 'info@regionalmed.com',
-          registrationId: 'RMC456',
-          createdAt: new Date(),
-          verified: true
-        },
-        {
-          id: 'hospital-3',
-          name: 'Community Health Clinic',
-          address: '789 Pine Ln, Anytown',
-          contactPerson: 'Dr. Williams',
-          email: 'info@communityhealth.com',
-          registrationId: 'CHC789',
-          createdAt: new Date(),
-          verified: false
-        }
-      ]);
+      this.setInStorage('hospitals', []);
     }
     
-    // Initialize blood inventory if not already present
     if (!this.getFromStorage('allBloodInventory')) {
-      this.setInStorage('allBloodInventory', [
-        {
-          id: 'inventory-1',
-          hospital: 'City General Hospital',
-          bloodType: 'A',
-          rhFactor: 'positive',
-          units: 15,
-          expirationDate: new Date(new Date().setDate(new Date().getDate() + 30)),
-          processedDate: new Date(new Date().setDate(new Date().getDate() - 5)),
-          donorAge: 25,
-          specialAttributes: ['irradiated', 'leukoreduced']
-        },
-        {
-          id: 'inventory-2',
-          hospital: 'Regional Medical Center',
-          bloodType: 'B',
-          rhFactor: 'negative',
-          units: 8,
-          expirationDate: new Date(new Date().setDate(new Date().getDate() + 20)),
-          processedDate: new Date(new Date().setDate(new Date().getDate() - 3)),
-          donorAge: 30,
-          specialAttributes: ['cmv-negative']
-        },
-        {
-          id: 'inventory-3',
-          hospital: 'Community Health Clinic',
-          bloodType: 'O',
-          rhFactor: 'positive',
-          units: 12,
-          expirationDate: new Date(new Date().setDate(new Date().getDate() + 45)),
-          processedDate: new Date(new Date().setDate(new Date().getDate() - 7)),
-          donorAge: 22
-        }
-      ]);
+      this.setInStorage('allBloodInventory', []);
     }
     
-    // Initialize blood requests if not already present
     if (!this.getFromStorage('allBloodRequests')) {
-      this.setInStorage('allBloodRequests', [
-        {
-          id: 'request-1',
-          hospital: 'City General Hospital',
-          bloodType: 'A Rh+ (A+)',
-          units: 2,
-          patientAge: 60,
-          patientWeight: 75,
-          medicalCondition: 'Anemia',
-          urgency: 'urgent',
-          neededBy: new Date(new Date().setDate(new Date().getDate() + 7)),
-          specialRequirements: ['irradiated'],
-          createdAt: new Date(),
-          matchPercentage: 0
-        },
-        {
-          id: 'request-2',
-          hospital: 'Regional Medical Center',
-          bloodType: 'O Rh- (O-)',
-          units: 1,
-          patientAge: 45,
-          patientWeight: 68,
-          medicalCondition: 'Trauma',
-          urgency: 'critical',
-          neededBy: new Date(new Date().setDate(new Date().getDate() + 2)),
-          createdAt: new Date(),
-          matchPercentage: 0
-        }
-      ]);
+      this.setInStorage('allBloodRequests', []);
+    }
+
+    if (!this.getFromStorage('donors')) {
+      this.setInStorage('donors', []);
+    }
+
+    if (!this.getFromStorage('donationDrives')) {
+      this.setInStorage('donationDrives', []);
     }
   }
 
@@ -259,15 +209,16 @@ class MockDatabaseService {
     );
   }
 
-  async getAllData(): Promise<{ hospitals: Hospital[]; inventory: BloodInventory[]; requests: BloodRequest[]; }> {
+  async getAllData(): Promise<{ hospitals: Hospital[]; inventory: BloodInventory[]; requests: BloodRequest[]; donors: Donor[]; }> {
     const hospitals = await this.getRegisteredHospitals();
     const inventory = await this.getBloodInventoryDetails();
     const requests = await this.getBloodRequests();
-    return { hospitals, inventory, requests };
+    const donors = await this.getDonors();
+    return { hospitals, inventory, requests, donors };
   }
 
   async getHospitalProfile(): Promise<Hospital> {
-    // For demo purposes, return the first hospital
+    // For demo purposes, return the first hospital or a default
     const hospitals = await this.getRegisteredHospitals();
     return hospitals[0] || {
       id: 'default',
@@ -330,9 +281,7 @@ class MockDatabaseService {
 
     // Trigger auto-matching for pending requests
     setTimeout(() => {
-      import('./autoMatchingService').then(({ autoMatchingService }) => {
-        autoMatchingService.processNewInventory(hospitalName);
-      });
+      this.triggerAutoMatching();
     }, 1000);
 
     return newInventory;
@@ -370,12 +319,10 @@ class MockDatabaseService {
 
     console.log(`📋 New blood request added: ${newRequest.bloodType} for ${hospitalName}`);
 
-    // Trigger auto-matching after a short delay
+    // Trigger auto-matching and donor notifications
     setTimeout(() => {
-      // Import the service dynamically to avoid circular dependencies
-      import('./autoMatchingService').then(({ autoMatchingService }) => {
-        autoMatchingService.processNewRequest(newRequest.id);
-      });
+      this.triggerAutoMatching();
+      this.notifyDonors(newRequest);
     }, 1000);
 
     return newRequest;
@@ -401,11 +348,10 @@ class MockDatabaseService {
 
       console.log(`📋 New blood request created: ${newRequest.bloodType} for ${request.hospital}`);
 
-      // Trigger auto-matching after a short delay
+      // Trigger auto-matching and donor notifications
       setTimeout(() => {
-        import('./autoMatchingService').then(({ autoMatchingService }) => {
-          autoMatchingService.processNewRequest(newRequest.id);
-        });
+        this.triggerAutoMatching();
+        this.notifyDonors(newRequest);
       }, 1000);
 
       return { success: true, requestId: newRequest.id };
@@ -454,7 +400,76 @@ class MockDatabaseService {
     return updatedRequest;
   }
 
-  // AI Matching simulation (simplified)
+  // Donor management functions
+  async registerDonor(donor: Omit<Donor, 'id' | 'createdAt'>): Promise<Donor> {
+    const newDonor: Donor = {
+      id: uuidv4(),
+      ...donor,
+      createdAt: new Date()
+    };
+
+    const donors = this.getFromStorage('donors') || [];
+    this.setInStorage('donors', [...donors, newDonor]);
+
+    console.log(`👤 New donor registered: ${newDonor.name} (${newDonor.bloodType}${newDonor.rhFactor === 'positive' ? '+' : '-'})`);
+    return newDonor;
+  }
+
+  async getDonors(): Promise<Donor[]> {
+    return this.getFromStorage('donors') || [];
+  }
+
+  async getEligibleDonorsByBloodType(bloodType: string, rhFactor: string): Promise<Donor[]> {
+    const donors = await this.getDonors();
+    return donors.filter((donor: Donor) => 
+      donor.isEligible && 
+      donor.bloodType === bloodType && 
+      donor.rhFactor === rhFactor &&
+      donor.notificationPreferences.urgentRequests
+    );
+  }
+
+  // Donation Drive functions
+  async createDonationDrive(drive: Omit<DonationDrive, 'id' | 'createdAt' | 'registeredDonors'>): Promise<DonationDrive> {
+    const newDrive: DonationDrive = {
+      id: uuidv4(),
+      ...drive,
+      registeredDonors: 0,
+      createdAt: new Date()
+    };
+
+    const drives = this.getFromStorage('donationDrives') || [];
+    this.setInStorage('donationDrives', [...drives, newDrive]);
+
+    console.log(`🎪 New donation drive created: ${newDrive.eventName}`);
+    return newDrive;
+  }
+
+  async getDonationDrives(): Promise<DonationDrive[]> {
+    return this.getFromStorage('donationDrives') || [];
+  }
+
+  async registerForDonationDrive(driveId: string, donorId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const drives = this.getFromStorage('donationDrives') || [];
+      const driveIndex = drives.findIndex((drive: DonationDrive) => drive.id === driveId);
+      
+      if (driveIndex === -1) {
+        return { success: false, error: 'Donation drive not found' };
+      }
+
+      drives[driveIndex].registeredDonors += 1;
+      this.setInStorage('donationDrives', drives);
+
+      console.log(`Donor ${donorId} registered for drive ${driveId}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error registering for donation drive:', error);
+      return { success: false, error: 'Failed to register for donation drive' };
+    }
+  }
+
+  // AI Matching simulation with enhanced logic
   async findPotentialMatches(requestId: string): Promise<AiMatch[]> {
     const bloodRequests = await this.getBloodRequests();
     const inventory = await this.getBloodInventoryDetails();
@@ -467,11 +482,22 @@ class MockDatabaseService {
     }
 
     const potentialMatches: AiMatch[] = [];
+    const requestBloodType = request.bloodType.split(' ')[0];
+    
     inventory.forEach(inv => {
       const hospital = hospitals.find(h => h.name === inv.hospital);
-      if (!hospital) return;
+      if (!hospital || inv.hospital === request.hospital) return;
 
-      if (inv.bloodType === request.bloodType.split(' ')[0] && inv.units > 0) {
+      // Enhanced blood compatibility checking
+      const isCompatible = this.checkBloodCompatibility(requestBloodType, inv.bloodType, inv.rhFactor);
+      
+      if (isCompatible && inv.units > 0) {
+        const distance = Math.floor(Math.random() * 100) + 1;
+        const expiryDays = Math.floor((inv.expirationDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        
+        // Calculate comprehensive match score
+        const matchScore = this.calculateMatchScore(request, inv, distance, expiryDays);
+        
         potentialMatches.push({
           donorId: hospital.id,
           requestId: request.id,
@@ -480,24 +506,101 @@ class MockDatabaseService {
           bloodType: inv.bloodType,
           bloodRhFactor: inv.rhFactor,
           availableUnits: inv.units,
-          distance: Math.floor(Math.random() * 100),
-          matchScore: Math.floor(Math.random() * 100),
+          distance,
+          matchScore,
           status: 'potential',
-          compatibilityScore: 75,
+          specialAttributes: inv.specialAttributes,
+          compatibilityScore: 85 + Math.floor(Math.random() * 15),
           donorAge: inv.donorAge,
-          expiryDays: 30,
-          ageCompatibilityScore: 90,
-          medicalCompatibilityScore: 95
+          expiryDays,
+          ageCompatibilityScore: this.calculateAgeCompatibility(request.patientAge, inv.donorAge),
+          medicalCompatibilityScore: this.calculateMedicalCompatibility(request, inv)
         });
       }
     });
 
-    return potentialMatches;
+    // Sort by match score descending
+    return potentialMatches.sort((a, b) => b.matchScore - a.matchScore);
+  }
+
+  private checkBloodCompatibility(requestType: string, inventoryType: string, rhFactor: string): boolean {
+    // Basic blood type compatibility matrix
+    const compatibility: { [key: string]: string[] } = {
+      'O': ['O', 'A', 'B', 'AB'],
+      'A': ['A', 'AB'],
+      'B': ['B', 'AB'],
+      'AB': ['AB']
+    };
+
+    return compatibility[inventoryType]?.includes(requestType) || false;
+  }
+
+  private calculateMatchScore(request: BloodRequest, inventory: BloodInventory, distance: number, expiryDays: number): number {
+    let score = 100;
+
+    // Distance penalty (closer is better)
+    score -= Math.floor(distance / 10);
+
+    // Urgency bonus
+    if (request.urgency === 'critical') score += 20;
+    else if (request.urgency === 'urgent') score += 10;
+
+    // Expiry penalty (fresher is better, but penalize very close expiry)
+    if (expiryDays < 7) score -= 30;
+    else if (expiryDays < 14) score -= 10;
+
+    // Special requirements match
+    if (request.specialRequirements && inventory.specialAttributes) {
+      const matchingAttributes = request.specialRequirements.filter(req => 
+        inventory.specialAttributes?.includes(req)
+      );
+      score += matchingAttributes.length * 5;
+    }
+
+    return Math.max(0, Math.min(100, score));
+  }
+
+  private calculateAgeCompatibility(patientAge: number, donorAge: number): number {
+    const ageDiff = Math.abs(patientAge - donorAge);
+    return Math.max(50, 100 - ageDiff);
+  }
+
+  private calculateMedicalCompatibility(request: BloodRequest, inventory: BloodInventory): number {
+    // Basic medical compatibility based on condition and special attributes
+    let score = 85;
+    
+    if (request.medicalCondition.toLowerCase().includes('cancer') && 
+        inventory.specialAttributes?.includes('irradiated')) {
+      score += 15;
+    }
+    
+    if (request.medicalCondition.toLowerCase().includes('immune') && 
+        inventory.specialAttributes?.includes('cmv-negative')) {
+      score += 10;
+    }
+
+    return Math.min(100, score);
+  }
+
+  private async triggerAutoMatching(): void {
+    console.log('🤖 Triggering auto-matching for new inventory/requests...');
+    // This would trigger the auto-matching service
+  }
+
+  private async notifyDonors(request: BloodRequest): void {
+    const requestBloodType = request.bloodType.split(' ')[0];
+    const rhFactor = request.bloodType.includes('+') ? 'positive' : 'negative';
+    
+    const eligibleDonors = await this.getEligibleDonorsByBloodType(requestBloodType, rhFactor);
+    
+    if (eligibleDonors.length > 0 && request.urgency === 'critical') {
+      console.log(`🚨 Notifying ${eligibleDonors.length} eligible donors about critical request for ${request.bloodType}`);
+      // Here you would send actual notifications
+    }
   }
 
   async contactHospital(hospitalId: string, requestId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Simulate contacting the hospital
       console.log(`📞 Contacting hospital ${hospitalId} for request ${requestId}`);
       return { success: true };
     } catch (error) {
@@ -509,4 +612,4 @@ class MockDatabaseService {
 
 const mockDatabaseService = new MockDatabaseService();
 export default mockDatabaseService;
-export type { Hospital, BloodInventory, BloodRequest, AiMatch };
+export type { Hospital, BloodInventory, BloodRequest, AiMatch, Donor, DonationDrive };

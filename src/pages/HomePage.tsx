@@ -1,3 +1,4 @@
+
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,7 @@ const HomePage = () => {
   const totalUnits = bloodInventory?.reduce((sum, item) => sum + item.units, 0) || 0;
   const totalHospitals = hospitals?.length || 0;
   const criticalRequests = bloodRequests?.filter(req => req.urgency === 'critical').length || 0;
-  const pendingRequests = bloodRequests?.length || 0; // Fix: removed status filter since BloodRequest doesn't have status property
+  const pendingRequests = bloodRequests?.length || 0;
 
   // Calculate blood type availability
   const bloodTypeStats = bloodInventory?.reduce((acc, item) => {
@@ -68,19 +69,25 @@ const HomePage = () => {
             {isAuthenticated ? (
               userType === 'hospital' ? 
                 "Manage your blood inventory and connect with partner hospitals using AI-powered matching." :
-                "Monitor blood supply across all registered hospitals and approve new hospital registrations."
+                userType === 'government' ?
+                "Monitor blood supply across all registered hospitals and approve new hospital registrations." :
+                "Find blood donation opportunities and help save lives in your community."
             ) : (
-              "Connect with other hospitals using our AI-powered blood matching system. Track real-time blood availability and help save lives by sharing blood resources across your network."
+              "Connect hospitals and donors using our AI-powered blood matching system. Track real-time blood availability and help save lives by sharing blood resources across your network."
             )}
           </p>
           
           <div className="flex justify-center gap-4 mb-12">
             {isAuthenticated ? (
               <Button
-                onClick={() => navigate(userType === 'hospital' ? '/dashboard' : '/government-dashboard')}
+                onClick={() => navigate(
+                  userType === 'hospital' ? '/dashboard' : 
+                  userType === 'government' ? '/government-dashboard' : 
+                  '/donor-dashboard'
+                )}
                 className="bg-red-600 hover:bg-red-700 px-6 py-3 text-lg"
               >
-                Go to {userType === 'hospital' ? 'Hospital' : 'Government'} Dashboard
+                Go to {userType === 'hospital' ? 'Hospital' : userType === 'government' ? 'Government' : 'Donor'} Dashboard
               </Button>
             ) : (
               <>
@@ -88,7 +95,14 @@ const HomePage = () => {
                   onClick={() => navigate('/register')}
                   className="bg-red-600 hover:bg-red-700 px-6 py-3 text-lg"
                 >
-                  Hospital Login/Register
+                  Hospital Portal
+                </Button>
+                <Button
+                  onClick={() => navigate('/donor-register')}
+                  variant="outline"
+                  className="border-red-600 text-red-600 hover:bg-red-50 px-6 py-3 text-lg"
+                >
+                  Donor Portal
                 </Button>
                 <Button
                   onClick={() => navigate('/gov-login')}
@@ -122,9 +136,9 @@ const HomePage = () => {
             </Card>
 
             <Card className="p-6 text-center">
-              <Database className="w-12 h-12 text-purple-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-semibold mb-2">{requestsLoading ? '...' : pendingRequests}</h3>
-              <p className="text-gray-600">Pending Requests</p>
+              <Users className="w-12 h-12 text-blue-500 mx-auto mb-4" />
+              <h3 className="text-2xl font-semibold mb-2">0</h3>
+              <p className="text-gray-600">Registered Donors</p>
             </Card>
           </div>
         </div>

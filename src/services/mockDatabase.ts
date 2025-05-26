@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 
 export interface BloodInventory {
@@ -50,6 +49,7 @@ export interface Donor {
   email: string;
   phone: string;
   weight: number;
+  address: string;
   isEligible: boolean;
   notificationPreferences: {
     urgentRequests: boolean;

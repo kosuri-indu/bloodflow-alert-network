@@ -168,6 +168,8 @@ const registerDonor = async (userData: any) => {
       age: parseInt(userData.age),
       weight: parseInt(userData.weight),
       address: userData.address || '',
+      location: userData.address || 'Unknown Location',
+      available: true,
       isEligible: true,
       notificationPreferences: {
         urgentRequests: true,
@@ -280,7 +282,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log("AuthContext register called with:", { userData, userType });
       
-      if (userType === 'hospital') {
+      if (type === 'hospital') {
         const hospitalData = {
           name: userData.hospitalName,
           email: userData.email,
@@ -300,7 +302,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           throw new Error(result.error || 'Hospital registration failed');
         }
-      } else if (userType === 'donor') {
+      } else if (type === 'donor') {
         const donorData = {
           name: userData.name,
           email: userData.email,
@@ -309,7 +311,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           rhFactor: userData.rhFactor,
           age: userData.age,
           weight: userData.weight,
-          address: userData.address,
+          address: userData.address || '',
+          location: userData.address || 'Unknown Location',
+          available: true,
           isEligible: true,
           notificationPreferences: userData.notificationPreferences || {
             urgentRequests: true,

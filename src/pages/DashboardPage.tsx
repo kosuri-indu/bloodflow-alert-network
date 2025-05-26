@@ -89,7 +89,7 @@ const DashboardPage = () => {
   const refreshAllData = async () => {
     setIsLoading(true);
     try {
-      const profile = await mockDatabaseService.getHospitalProfile();
+      const profile = await mockDatabaseService.getHospitalProfile(currentUser?.hospitalName);
       const [inventoryDetails, requests] = await Promise.all([
         mockDatabaseService.getHospitalBloodInventory(profile.name),
         mockDatabaseService.getHospitalBloodRequests(profile.name)

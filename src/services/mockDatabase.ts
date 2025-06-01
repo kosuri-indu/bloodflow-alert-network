@@ -116,11 +116,11 @@ class MockDatabaseService {
         this.localStorage.removeItem(key);
       }
     });
-    console.log('🗑️ ALL DATABASE DATA CLEARED ON INITIALIZATION');
+    console.log('🗑️ ALL DATABASE DATA CLEARED ON INITIALIZATION - FRESH START');
   }
 
   private initializeDefaultData() {
-    // Initialize empty data structures
+    // Initialize completely empty data structures for fresh start
     const dataKeys = [
       'hospitals',
       'allBloodInventory', 
@@ -134,7 +134,7 @@ class MockDatabaseService {
       this.setInStorage(key, []);
     });
     
-    console.log('💾 Database initialized with empty data structures');
+    console.log('💾 Database initialized with completely empty data structures - FRESH START');
   }
 
   // Utility functions for local storage with ACID properties

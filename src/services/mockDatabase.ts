@@ -95,11 +95,42 @@ class MockDatabaseService {
 
   constructor() {
     this.localStorage = window.localStorage;
-    this.initializeEmptyData();
+    this.initializeDefaultData();
   }
 
-  private initializeEmptyData() {
-    // Clear all existing data and initialize with empty arrays
+  private initializeDefaultData() {
+    // Only initialize if data doesn't exist
+    const dataKeys = [
+      'hospitals',
+      'allBloodInventory', 
+      'allBloodRequests',
+      'pendingHospitals',
+      'donors',
+      'donationDrives'
+    ];
+    
+    dataKeys.forEach(key => {
+      if (!this.localStorage.getItem(key)) {
+        this.setInStorage(key, []);
+      }
+    });
+    
+    console.log('💾 Database initialized with persistent storage');
+  }
+
+  // Utility functions for local storage
+  private getFromStorage(key: string): any {
+    const item = this.localStorage.getItem(key);
+    return item ? JSON.parse(item) : [];
+  }
+
+  private setInStorage(key: string, data: any): void {
+    this.localStorage.setItem(key, JSON.stringify(data));
+    console.log(`💾 Updated storage for ${key}:`, data.length, 'items');
+  }
+
+  // Manual clear function for testing
+  async clearAllData(): Promise<void> {
     const dataKeys = [
       'hospitals',
       'allBloodInventory', 
@@ -113,14 +144,11 @@ class MockDatabaseService {
       this.setInStorage(key, []);
     });
     
-    // Clear any hospital-specific data
     this.clearHospitalSpecificData();
-    
-    console.log('🗑️ All database data cleared and reset to empty state');
+    console.log('🗑️ All database data manually cleared');
   }
 
   private clearHospitalSpecificData() {
-    // Remove all hospital-specific blood inventory and requests
     const allKeys = Object.keys(this.localStorage);
     allKeys.forEach(key => {
       if (key.startsWith('bloodInventory_') || key.startsWith('bloodRequests_')) {
@@ -128,17 +156,6 @@ class MockDatabaseService {
         console.log(`🗑️ Cleared hospital-specific data: ${key}`);
       }
     });
-  }
-
-  // Utility functions for local storage
-  private getFromStorage(key: string): any {
-    const item = this.localStorage.getItem(key);
-    return item ? JSON.parse(item) : [];
-  }
-
-  private setInStorage(key: string, data: any): void {
-    this.localStorage.setItem(key, JSON.stringify(data));
-    console.log(`💾 Updated storage for ${key}:`, data.length, 'items');
   }
 
   // Hospital management functions
@@ -154,10 +171,44 @@ class MockDatabaseService {
     
     console.log(`🏥 Hospital registered: ${newHospital.name}`);
     
-    // Trigger data refresh event
     window.dispatchEvent(new CustomEvent('dataRefresh'));
     
     return newHospital;
+  }
+
+  async updateHospital(hospitalId: string, updates: Partial<Hospital>): Promise<{ success: boolean; error?: string }> {
+    try {
+      let hospitals = this.getFromStorage('hospitals');
+      let pendingHospitals = this.getFromStorage('pendingHospitals');
+      
+      let hospitalIndex = hospitals.findIndex((h: Hospital) => h.id === hospitalId);
+      let isPending = false;
+      
+      if (hospitalIndex === -1) {
+        hospitalIndex = pendingHospitals.findIndex((h: Hospital) => h.id === hospitalId);
+        isPending = true;
+      }
+      
+      if (hospitalIndex === -1) {
+        return { success: false, error: 'Hospital not found' };
+      }
+      
+      if (isPending) {
+        pendingHospitals[hospitalIndex] = { ...pendingHospitals[hospitalIndex], ...updates };
+        this.setInStorage('pendingHospitals', pendingHospitals);
+      } else {
+        hospitals[hospitalIndex] = { ...hospitals[hospitalIndex], ...updates };
+        this.setInStorage('hospitals', hospitals);
+      }
+      
+      console.log(`🔄 Hospital updated: ${hospitalId}`);
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating hospital:', error);
+      return { success: false, error: 'Failed to update hospital' };
+    }
   }
 
   async approveHospital(hospitalId: string): Promise<boolean> {
@@ -170,7 +221,6 @@ class MockDatabaseService {
     const approvedHospital = pendingHospitals[approvedHospitalIndex];
     approvedHospital.verified = true;
     
-    // Remove from pending and add to verified hospitals
     const updatedPendingHospitals = pendingHospitals.filter((h: Hospital) => h.id !== hospitalId);
     this.setInStorage('pendingHospitals', updatedPendingHospitals);
     
@@ -186,11 +236,9 @@ class MockDatabaseService {
       let hospitals = this.getFromStorage('hospitals');
       let pendingHospitals = this.getFromStorage('pendingHospitals');
       
-      // Filter out the hospital to be deleted
       hospitals = hospitals.filter((hospital: Hospital) => hospital.id !== hospitalId);
       pendingHospitals = pendingHospitals.filter((hospital: Hospital) => hospital.id !== hospitalId);
       
-      // Update local storage
       this.setInStorage('hospitals', hospitals);
       this.setInStorage('pendingHospitals', pendingHospitals);
       
@@ -231,7 +279,6 @@ class MockDatabaseService {
   }
 
   async getHospitalProfile(): Promise<Hospital> {
-    // For demo purposes, return the first hospital
     const hospitals = await this.getRegisteredHospitals();
     return hospitals[0] || {
       id: 'default',
@@ -258,7 +305,6 @@ class MockDatabaseService {
       const approvedHospital = pendingHospitals[approvedHospitalIndex];
       approvedHospital.verified = true;
       
-      // Remove from pending and add to verified hospitals
       const updatedPendingHospitals = pendingHospitals.filter((h: Hospital) => h.id !== hospitalId);
       this.setInStorage('pendingHospitals', updatedPendingHospitals);
       
@@ -267,7 +313,6 @@ class MockDatabaseService {
       
       console.log(`✅ Hospital approved: ${approvedHospital.name}`);
       
-      // Trigger data refresh event
       window.dispatchEvent(new CustomEvent('dataRefresh'));
       
       return { success: true, hospitalName: approvedHospital.name };
@@ -277,7 +322,7 @@ class MockDatabaseService {
     }
   }
 
-  // Blood inventory functions
+  // Blood inventory functions with CRUD operations
   async addBloodInventory(hospitalName: string, inventory: Omit<BloodInventory, 'id' | 'hospital'>): Promise<BloodInventory> {
     const newInventory: BloodInventory = {
       id: uuidv4(),
@@ -290,16 +335,13 @@ class MockDatabaseService {
     const updatedInventory = [...existingInventory, newInventory];
     this.setInStorage(hospitalKey, updatedInventory);
 
-    // Also add to global inventory
     const allInventory = this.getFromStorage('allBloodInventory');
     this.setInStorage('allBloodInventory', [...allInventory, newInventory]);
 
     console.log(`🩸 New blood inventory added: ${newInventory.bloodType} to ${hospitalName}`);
 
-    // Trigger data refresh event
     window.dispatchEvent(new CustomEvent('dataRefresh'));
 
-    // Trigger auto-matching for pending requests
     setTimeout(() => {
       import('./autoMatchingService').then(({ autoMatchingService }) => {
         autoMatchingService.processNewInventory(hospitalName);
@@ -307,6 +349,67 @@ class MockDatabaseService {
     }, 1000);
 
     return newInventory;
+  }
+
+  async updateBloodInventory(inventoryId: string, updates: Partial<BloodInventory>): Promise<{ success: boolean; error?: string }> {
+    try {
+      const allInventory = this.getFromStorage('allBloodInventory');
+      const inventoryIndex = allInventory.findIndex((inv: BloodInventory) => inv.id === inventoryId);
+      
+      if (inventoryIndex === -1) {
+        return { success: false, error: 'Inventory item not found' };
+      }
+      
+      const updatedItem = { ...allInventory[inventoryIndex], ...updates };
+      allInventory[inventoryIndex] = updatedItem;
+      this.setInStorage('allBloodInventory', allInventory);
+      
+      // Update hospital-specific inventory
+      const hospitalKey = `bloodInventory_${updatedItem.hospital}`;
+      const hospitalInventory = this.getFromStorage(hospitalKey);
+      const hospitalIndex = hospitalInventory.findIndex((inv: BloodInventory) => inv.id === inventoryId);
+      
+      if (hospitalIndex !== -1) {
+        hospitalInventory[hospitalIndex] = updatedItem;
+        this.setInStorage(hospitalKey, hospitalInventory);
+      }
+      
+      console.log(`🔄 Blood inventory updated: ${inventoryId}`);
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating blood inventory:', error);
+      return { success: false, error: 'Failed to update inventory' };
+    }
+  }
+
+  async deleteBloodInventory(inventoryId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      let allInventory = this.getFromStorage('allBloodInventory');
+      const item = allInventory.find((inv: BloodInventory) => inv.id === inventoryId);
+      
+      if (!item) {
+        return { success: false, error: 'Inventory item not found' };
+      }
+      
+      allInventory = allInventory.filter((inv: BloodInventory) => inv.id !== inventoryId);
+      this.setInStorage('allBloodInventory', allInventory);
+      
+      // Remove from hospital-specific inventory
+      const hospitalKey = `bloodInventory_${item.hospital}`;
+      let hospitalInventory = this.getFromStorage(hospitalKey);
+      hospitalInventory = hospitalInventory.filter((inv: BloodInventory) => inv.id !== inventoryId);
+      this.setInStorage(hospitalKey, hospitalInventory);
+      
+      console.log(`🗑️ Blood inventory deleted: ${inventoryId}`);
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting blood inventory:', error);
+      return { success: false, error: 'Failed to delete inventory' };
+    }
   }
 
   async getBloodInventoryDetails(): Promise<BloodInventory[]> {
@@ -320,7 +423,7 @@ class MockDatabaseService {
     return inventory;
   }
 
-  // Blood request functions
+  // Blood request functions with CRUD operations
   async addBloodRequest(hospitalName: string, request: Omit<BloodRequest, 'id' | 'hospital' | 'createdAt' | 'matchPercentage'>): Promise<BloodRequest> {
     const newRequest: BloodRequest = {
       id: uuidv4(),
@@ -335,16 +438,13 @@ class MockDatabaseService {
     const updatedRequests = [...existingRequests, newRequest];
     this.setInStorage(hospitalKey, updatedRequests);
 
-    // Also add to global requests
     const allRequests = this.getFromStorage('allBloodRequests');
     this.setInStorage('allBloodRequests', [...allRequests, newRequest]);
 
     console.log(`📋 New blood request added: ${newRequest.bloodType} for ${hospitalName}`);
 
-    // Trigger data refresh event
     window.dispatchEvent(new CustomEvent('dataRefresh'));
 
-    // Trigger auto-matching after a short delay
     setTimeout(() => {
       import('./autoMatchingService').then(({ autoMatchingService }) => {
         autoMatchingService.processNewRequest(newRequest.id);
@@ -368,16 +468,13 @@ class MockDatabaseService {
       const updatedRequests = [...existingRequests, newRequest];
       this.setInStorage(hospitalKey, updatedRequests);
 
-      // Also add to global requests
       const allRequests = this.getFromStorage('allBloodRequests');
       this.setInStorage('allBloodRequests', [...allRequests, newRequest]);
 
       console.log(`📋 New blood request created: ${newRequest.bloodType} for ${request.hospital}`);
 
-      // Trigger data refresh event
       window.dispatchEvent(new CustomEvent('dataRefresh'));
 
-      // Trigger auto-matching after a short delay
       setTimeout(() => {
         import('./autoMatchingService').then(({ autoMatchingService }) => {
           autoMatchingService.processNewRequest(newRequest.id);
@@ -389,17 +486,6 @@ class MockDatabaseService {
       console.error('Error creating blood request:', error);
       return { success: false, error: 'Failed to create blood request' };
     }
-  }
-
-  async getBloodRequests(): Promise<BloodRequest[]> {
-    const allRequests = this.getFromStorage('allBloodRequests');
-    return allRequests;
-  }
-
-  async getHospitalBloodRequests(hospitalName: string): Promise<BloodRequest[]> {
-    const hospitalKey = `bloodRequests_${hospitalName}`;
-    const requests = this.getFromStorage(hospitalKey);
-    return requests;
   }
 
   async updateBloodRequest(requestId: string, updates: Partial<BloodRequest>): Promise<BloodRequest | null> {
@@ -415,7 +501,6 @@ class MockDatabaseService {
     allRequests[requestIndex] = updatedRequest;
     this.setInStorage('allBloodRequests', allRequests);
     
-    // Update hospital-specific requests as well
     const hospitalName = updatedRequest.hospital;
     const hospitalKey = `bloodRequests_${hospitalName}`;
     const hospitalRequests = this.getFromStorage(hospitalKey);
@@ -426,8 +511,49 @@ class MockDatabaseService {
       this.setInStorage(hospitalKey, hospitalRequests);
     }
     
-    console.log(`Blood request updated: ${requestId}`);
+    console.log(`🔄 Blood request updated: ${requestId}`);
+    window.dispatchEvent(new CustomEvent('dataRefresh'));
+    
     return updatedRequest;
+  }
+
+  async deleteBloodRequest(requestId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      let allRequests = this.getFromStorage('allBloodRequests');
+      const request = allRequests.find((req: BloodRequest) => req.id === requestId);
+      
+      if (!request) {
+        return { success: false, error: 'Request not found' };
+      }
+      
+      allRequests = allRequests.filter((req: BloodRequest) => req.id !== requestId);
+      this.setInStorage('allBloodRequests', allRequests);
+      
+      // Remove from hospital-specific requests
+      const hospitalKey = `bloodRequests_${request.hospital}`;
+      let hospitalRequests = this.getFromStorage(hospitalKey);
+      hospitalRequests = hospitalRequests.filter((req: BloodRequest) => req.id !== requestId);
+      this.setInStorage(hospitalKey, hospitalRequests);
+      
+      console.log(`🗑️ Blood request deleted: ${requestId}`);
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting blood request:', error);
+      return { success: false, error: 'Failed to delete request' };
+    }
+  }
+
+  async getBloodRequests(): Promise<BloodRequest[]> {
+    const allRequests = this.getFromStorage('allBloodRequests');
+    return allRequests;
+  }
+
+  async getHospitalBloodRequests(hospitalName: string): Promise<BloodRequest[]> {
+    const hospitalKey = `bloodRequests_${hospitalName}`;
+    const requests = this.getFromStorage(hospitalKey);
+    return requests;
   }
 
   // AI Matching simulation (simplified)
@@ -473,7 +599,6 @@ class MockDatabaseService {
 
   async contactHospital(hospitalId: string, requestId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Simulate contacting the hospital
       console.log(`📞 Contacting hospital ${hospitalId} for request ${requestId}`);
       return { success: true };
     } catch (error) {

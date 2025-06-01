@@ -1,6 +1,5 @@
 
 import { useNavigate } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Brain, DropletIcon, Hospital, Database } from 'lucide-react';
 
@@ -22,47 +21,31 @@ const Index = () => {
             Connect with local blood banks and hospitals using our AI-powered matching system.
             Track real-time blood availability and help save lives by donating when it's needed most.
           </p>
-          
-          <div className="flex justify-center gap-4 mb-12">
-            <Button
-              onClick={() => navigate('/login')}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Login
-            </Button>
-            <Button
-              onClick={() => navigate('/register')}
-              variant="outline"
-              className="border-red-600 text-red-600 hover:bg-red-50"
-            >
-              Register
-            </Button>
-          </div>
 
           {/* Stats Section */}
           <div className="grid md:grid-cols-3 gap-8 mb-16">
             <Card className="p-6 text-center">
               <Hospital className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-semibold mb-2">10+ Hospitals</h3>
-              <p className="text-gray-600">Connected to our network</p>
+              <h3 className="text-2xl font-semibold mb-2">Hospitals Connected</h3>
+              <p className="text-gray-600">Growing network of medical facilities</p>
             </Card>
 
             <Card className="p-6 text-center">
               <DropletIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-semibold mb-2">1000+ Donors</h3>
-              <p className="text-gray-600">Ready to save lives</p>
+              <h3 className="text-2xl font-semibold mb-2">Life-Saving Matches</h3>
+              <p className="text-gray-600">AI-powered blood type matching</p>
             </Card>
 
             <Card className="p-6 text-center">
               <Database className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-semibold mb-2">AI Matching</h3>
-              <p className="text-gray-600">Intelligent donor recommendations</p>
+              <h3 className="text-2xl font-semibold mb-2">Real-Time Updates</h3>
+              <p className="text-gray-600">Live inventory and request tracking</p>
             </Card>
           </div>
         </div>
 
         {/* Features Section */}
-        <div className="mb-12">
+        <div className="mb-16">
           <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">
             Our Features
           </h2>
@@ -91,13 +74,15 @@ const Index = () => {
           </div>
         </div>
 
-        <div className="text-center">
-          <Button 
-            onClick={() => navigate('/register')} 
-            className="bg-purple-600 hover:bg-purple-700 text-lg px-8 py-6"
-          >
-            Join BloodBankAI Today
-          </Button>
+        {/* Call to Action Section */}
+        <div className="text-center mb-20">
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">
+            Join the Blood Bank AI Network
+          </h2>
+          <p className="text-lg text-gray-600 mb-6 max-w-2xl mx-auto">
+            Be part of the future of blood donation and medical emergency response. 
+            Our platform connects hospitals, blood banks, and donors for faster, more efficient life-saving operations.
+          </p>
         </div>
       </div>
     </div>

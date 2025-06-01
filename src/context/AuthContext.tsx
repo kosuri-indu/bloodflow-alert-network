@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
@@ -304,11 +303,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(null);
     setUserType(null);
     
-    const keysToRemove = ['bloodbank_user', 'bloodbank_user_type'];
-    keysToRemove.forEach(key => {
+    // Only clear authentication data, NOT database data
+    const authKeysToRemove = ['bloodbank_user', 'bloodbank_user_type'];
+    authKeysToRemove.forEach(key => {
       localStorage.removeItem(key);
-      console.log(`AuthContext - Removed localStorage key: ${key}`);
+      console.log(`AuthContext - Removed auth key: ${key}`);
     });
+    
+    // Do NOT clear database data - this ensures persistence
+    console.log('AuthContext - Database data preserved after logout');
     
     toast({
       title: "Logged Out Successfully",

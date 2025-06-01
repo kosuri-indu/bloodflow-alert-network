@@ -115,8 +115,10 @@ const registerHospital = async (userData: any) => {
       address: userData.address || ''
     });
     
+    console.log('Hospital registration successful:', userData.hospitalName);
     return { success: true };
   } catch (error) {
+    console.error('Hospital registration error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Registration failed'
@@ -133,7 +135,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const refreshData = () => {
     setRefreshTrigger(prev => prev + 1);
-    console.log('AuthContext - Data refresh triggered');
+    console.log('AuthContext - Data refresh triggered, clearing all caches');
+    
+    // Force refresh of all components that depend on data
+    window.dispatchEvent(new CustomEvent('dataRefresh'));
   };
   
   useEffect(() => {

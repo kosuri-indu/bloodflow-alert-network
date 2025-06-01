@@ -4,35 +4,55 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Brain, DropletIcon, Hospital, Database, ArrowRight, ChartBar, Shield, Users, AlertTriangle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import mockDatabaseService from '../services/mockDatabase';
 
 const HomePage = () => {
   const navigate = useNavigate();
   const { isAuthenticated, userType } = useAuth();
 
-  // Fetch real-time blood inventory data
-  const { data: bloodInventory, isLoading: inventoryLoading } = useQuery({
+  // Fetch real-time blood inventory data with automatic refetching
+  const { data: bloodInventory, isLoading: inventoryLoading, refetch: refetchInventory } = useQuery({
     queryKey: ['bloodInventory'],
     queryFn: mockDatabaseService.getBloodInventoryDetails,
+    refetchInterval: 5000, // Refetch every 5 seconds
+    staleTime: 0, // Always consider data stale for fresh updates
   });
 
-  // Fetch hospital data
-  const { data: hospitals, isLoading: hospitalsLoading } = useQuery({
+  // Fetch hospital data with automatic refetching
+  const { data: hospitals, isLoading: hospitalsLoading, refetch: refetchHospitals } = useQuery({
     queryKey: ['hospitals'],
     queryFn: mockDatabaseService.getRegisteredHospitals,
+    refetchInterval: 5000,
+    staleTime: 0,
   });
 
-  // Fetch blood requests data
-  const { data: bloodRequests, isLoading: requestsLoading } = useQuery({
+  // Fetch blood requests data with automatic refetching
+  const { data: bloodRequests, isLoading: requestsLoading, refetch: refetchRequests } = useQuery({
     queryKey: ['bloodRequests'],
     queryFn: mockDatabaseService.getBloodRequests,
+    refetchInterval: 5000,
+    staleTime: 0,
   });
+
+  // Listen for data refresh events
+  useEffect(() => {
+    const handleDataRefresh = () => {
+      console.log('HomePage - Received data refresh event, refetching all data');
+      refetchInventory();
+      refetchHospitals();
+      refetchRequests();
+    };
+
+    window.addEventListener('dataRefresh', handleDataRefresh);
+    return () => window.removeEventListener('dataRefresh', handleDataRefresh);
+  }, [refetchInventory, refetchHospitals, refetchRequests]);
 
   // Calculate dynamic stats
   const totalUnits = bloodInventory?.reduce((sum, item) => sum + item.units, 0) || 0;
   const totalHospitals = hospitals?.length || 0;
   const criticalRequests = bloodRequests?.filter(req => req.urgency === 'critical').length || 0;
-  const pendingRequests = bloodRequests?.length || 0; // Fix: removed status filter since BloodRequest doesn't have status property
+  const pendingRequests = bloodRequests?.length || 0;
 
   // Calculate blood type availability
   const bloodTypeStats = bloodInventory?.reduce((acc, item) => {
@@ -103,25 +123,25 @@ const HomePage = () => {
 
           {/* Real-time Stats Section */}
           <div className="grid md:grid-cols-4 gap-6 mb-16">
-            <Card className="p-6 text-center">
+            <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-300">
               <Hospital className="w-12 h-12 text-red-500 mx-auto mb-4" />
               <h3 className="text-2xl font-semibold mb-2">{hospitalsLoading ? '...' : totalHospitals}</h3>
               <p className="text-gray-600">Registered Hospitals</p>
             </Card>
 
-            <Card className="p-6 text-center">
+            <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-300">
               <DropletIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
               <h3 className="text-2xl font-semibold mb-2">{inventoryLoading ? '...' : totalUnits}</h3>
               <p className="text-gray-600">Blood Units Available</p>
             </Card>
 
-            <Card className="p-6 text-center">
+            <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-300">
               <AlertTriangle className="w-12 h-12 text-orange-500 mx-auto mb-4" />
               <h3 className="text-2xl font-semibold mb-2">{requestsLoading ? '...' : criticalRequests}</h3>
               <p className="text-gray-600">Critical Requests</p>
             </Card>
 
-            <Card className="p-6 text-center">
+            <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-300">
               <Database className="w-12 h-12 text-purple-500 mx-auto mb-4" />
               <h3 className="text-2xl font-semibold mb-2">{requestsLoading ? '...' : pendingRequests}</h3>
               <p className="text-gray-600">Pending Requests</p>
@@ -152,6 +172,19 @@ const HomePage = () => {
                 <p className="text-sm text-gray-600">
                   Data updated in real-time from {totalHospitals} connected hospitals
                 </p>
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* When no data is available */}
+        {!inventoryLoading && Object.keys(bloodTypeStats).length === 0 && (
+          <div className="mb-12">
+            <Card className="p-8 text-center">
+              <div className="text-gray-500 mb-4">
+                <Database className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <h3 className="text-xl font-semibold mb-2">No Blood Inventory Data</h3>
+                <p>Start by registering hospitals and adding blood inventory to see real-time availability.</p>
               </div>
             </Card>
           </div>

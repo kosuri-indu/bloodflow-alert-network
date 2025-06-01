@@ -26,6 +26,7 @@ export function useDashboardStats(hospitalName?: string) {
     try {
       setIsLoading(true);
       
+      // Force fresh data by clearing any cached values
       let inventory: BloodInventory[];
       let requests: BloodRequest[];
       
@@ -77,14 +78,17 @@ export function useDashboardStats(hospitalName?: string) {
         .filter(item => new Date(item.expirationDate) <= sevenDaysFromNow)
         .reduce((sum, item) => sum + item.units, 0);
 
-      setStats({
+      const newStats = {
         totalBloodUnits,
         aiMatches,
         partnerHospitals,
         criticalRequests,
         lowStockTypes,
         expiringUnits
-      });
+      };
+
+      console.log('Dashboard stats updated:', newStats);
+      setStats(newStats);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
     } finally {
@@ -94,6 +98,11 @@ export function useDashboardStats(hospitalName?: string) {
 
   useEffect(() => {
     refreshStats();
+    
+    // Set up interval to refresh stats every 5 seconds for real-time updates
+    const interval = setInterval(refreshStats, 5000);
+    
+    return () => clearInterval(interval);
   }, [hospitalName]);
 
   return {

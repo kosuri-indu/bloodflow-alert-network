@@ -50,7 +50,7 @@ const GovernmentDashboardPage = () => {
     try {
       console.log('Government Dashboard - Fetching comprehensive data');
       
-      const [verifiedHospitals, unverifiedHospitals, hospitalsData, requests, inventory] = await Promise.all([
+      const [verifiedHospitals, unverifiedHospitals, hospitalsDataResult, requests, inventory] = await Promise.all([
         mockDatabaseService.getRegisteredHospitals(),
         mockDatabaseService.getPendingHospitals(),
         mockDatabaseService.getAllHospitalsWithData(),
@@ -60,7 +60,15 @@ const GovernmentDashboardPage = () => {
       
       setHospitals(verifiedHospitals);
       setPendingHospitals(unverifiedHospitals);
-      setHospitalsWithData(hospitalsData);
+      
+      // Transform the data structure to match HospitalWithData[]
+      const transformedHospitalsData: HospitalWithData[] = hospitalsDataResult.hospitals.map(hospital => ({
+        hospital,
+        inventory: hospitalsDataResult.inventory.filter(inv => inv.hospitalId === hospital.id),
+        requests: hospitalsDataResult.requests.filter(req => req.hospital === hospital.name)
+      }));
+      
+      setHospitalsWithData(transformedHospitalsData);
       setAllRequests(requests);
       setAllInventory(inventory);
       

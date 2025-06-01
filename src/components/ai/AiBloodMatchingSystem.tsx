@@ -110,14 +110,14 @@ const AiBloodMatchingSystem = () => {
       
       const result = await mockDatabaseService.createBloodRequest(newRequest as any);
       
-      if (result.success && result.requestId) {
+      if (result.success && result.request) {
         toast({
           title: "Request Created",
           description: "Your blood request has been created successfully. Running AI matching...",
         });
         
         setIsLoadingMatches(true);
-        await runAiMatching({ id: result.requestId });
+        await runAiMatching({ id: result.request.id });
         setIsLoadingMatches(false);
         
         setActiveTab('matching-results');

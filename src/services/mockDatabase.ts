@@ -58,117 +58,67 @@ interface AiMatch {
   medicalCompatibilityScore: number;
 }
 
+interface Donor {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  bloodType: string;
+  rhFactor: string;
+  age: number;
+  weight: number;
+  available: boolean;
+  location: string;
+  address: string;
+  isEligible: boolean;
+  notificationPreferences: {
+    email: boolean;
+    sms: boolean;
+  };
+}
+
+interface DonationDrive {
+  id: string;
+  title: string;
+  description: string;
+  date: Date;
+  location: string;
+  organizer: string;
+  targetUnits: number;
+  currentUnits: number;
+  bloodTypesNeeded: string[];
+  registeredDonors: string[];
+}
+
 class MockDatabaseService {
   private localStorage: Storage;
 
   constructor() {
     this.localStorage = window.localStorage;
     
-    // Initialize hospitals if not already present
+    // Initialize with empty arrays instead of pre-populated data
     if (!this.getFromStorage('hospitals')) {
-      this.setInStorage('hospitals', [
-        {
-          id: 'hospital-1',
-          name: 'City General Hospital',
-          address: '123 Main St, Anytown',
-          contactPerson: 'Dr. Smith',
-          email: 'info@citygeneral.com',
-          registrationId: 'CGH123',
-          createdAt: new Date(),
-          verified: true
-        },
-        {
-          id: 'hospital-2',
-          name: 'Regional Medical Center',
-          address: '456 Oak Ave, Anytown',
-          contactPerson: 'Dr. Johnson',
-          email: 'info@regionalmed.com',
-          registrationId: 'RMC456',
-          createdAt: new Date(),
-          verified: true
-        },
-        {
-          id: 'hospital-3',
-          name: 'Community Health Clinic',
-          address: '789 Pine Ln, Anytown',
-          contactPerson: 'Dr. Williams',
-          email: 'info@communityhealth.com',
-          registrationId: 'CHC789',
-          createdAt: new Date(),
-          verified: false
-        }
-      ]);
+      this.setInStorage('hospitals', []);
     }
     
-    // Initialize blood inventory if not already present
     if (!this.getFromStorage('allBloodInventory')) {
-      this.setInStorage('allBloodInventory', [
-        {
-          id: 'inventory-1',
-          hospital: 'City General Hospital',
-          bloodType: 'A',
-          rhFactor: 'positive',
-          units: 15,
-          expirationDate: new Date(new Date().setDate(new Date().getDate() + 30)),
-          processedDate: new Date(new Date().setDate(new Date().getDate() - 5)),
-          donorAge: 25,
-          specialAttributes: ['irradiated', 'leukoreduced']
-        },
-        {
-          id: 'inventory-2',
-          hospital: 'Regional Medical Center',
-          bloodType: 'B',
-          rhFactor: 'negative',
-          units: 8,
-          expirationDate: new Date(new Date().setDate(new Date().getDate() + 20)),
-          processedDate: new Date(new Date().setDate(new Date().getDate() - 3)),
-          donorAge: 30,
-          specialAttributes: ['cmv-negative']
-        },
-        {
-          id: 'inventory-3',
-          hospital: 'Community Health Clinic',
-          bloodType: 'O',
-          rhFactor: 'positive',
-          units: 12,
-          expirationDate: new Date(new Date().setDate(new Date().getDate() + 45)),
-          processedDate: new Date(new Date().setDate(new Date().getDate() - 7)),
-          donorAge: 22
-        }
-      ]);
+      this.setInStorage('allBloodInventory', []);
     }
     
-    // Initialize blood requests if not already present
     if (!this.getFromStorage('allBloodRequests')) {
-      this.setInStorage('allBloodRequests', [
-        {
-          id: 'request-1',
-          hospital: 'City General Hospital',
-          bloodType: 'A Rh+ (A+)',
-          units: 2,
-          patientAge: 60,
-          patientWeight: 75,
-          medicalCondition: 'Anemia',
-          urgency: 'urgent',
-          neededBy: new Date(new Date().setDate(new Date().getDate() + 7)),
-          specialRequirements: ['irradiated'],
-          createdAt: new Date(),
-          matchPercentage: 0
-        },
-        {
-          id: 'request-2',
-          hospital: 'Regional Medical Center',
-          bloodType: 'O Rh- (O-)',
-          units: 1,
-          patientAge: 45,
-          patientWeight: 68,
-          medicalCondition: 'Trauma',
-          urgency: 'critical',
-          neededBy: new Date(new Date().setDate(new Date().getDate() + 2)),
-          createdAt: new Date(),
-          matchPercentage: 0
-        }
-      ]);
+      this.setInStorage('allBloodRequests', []);
+    }
+
+    if (!this.getFromStorage('pendingHospitals')) {
+      this.setInStorage('pendingHospitals', []);
+    }
+
+    if (!this.getFromStorage('donors')) {
+      this.setInStorage('donors', []);
+    }
+
+    if (!this.getFromStorage('donationDrives')) {
+      this.setInStorage('donationDrives', []);
     }
   }
 
@@ -505,8 +455,53 @@ class MockDatabaseService {
       return { success: false, error: 'Failed to contact hospital' };
     }
   }
+
+  // Donor management functions
+  async getDonors(): Promise<Donor[]> {
+    const donors = this.getFromStorage('donors') || [];
+    return donors;
+  }
+
+  async registerDonor(donor: Omit<Donor, 'id'>): Promise<Donor> {
+    const newDonor: Donor = {
+      id: uuidv4(),
+      ...donor
+    };
+    const donors = this.getFromStorage('donors') || [];
+    this.setInStorage('donors', [...donors, newDonor]);
+    console.log(`🩸 New donor registered: ${newDonor.name}`);
+    return newDonor;
+  }
+
+  // Donation drive functions
+  async getDonationDrives(): Promise<DonationDrive[]> {
+    const drives = this.getFromStorage('donationDrives') || [];
+    return drives;
+  }
+
+  async registerForDonationDrive(driveId: string, donorId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const drives = this.getFromStorage('donationDrives') || [];
+      const driveIndex = drives.findIndex((drive: DonationDrive) => drive.id === driveId);
+      
+      if (driveIndex === -1) {
+        return { success: false, error: 'Donation drive not found' };
+      }
+      
+      const drive = drives[driveIndex];
+      if (!drive.registeredDonors.includes(donorId)) {
+        drive.registeredDonors.push(donorId);
+        this.setInStorage('donationDrives', drives);
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error registering for donation drive:', error);
+      return { success: false, error: 'Failed to register for donation drive' };
+    }
+  }
 }
 
 const mockDatabaseService = new MockDatabaseService();
 export default mockDatabaseService;
-export type { Hospital, BloodInventory, BloodRequest, AiMatch };
+export type { Hospital, BloodInventory, BloodRequest, AiMatch, Donor, DonationDrive };

@@ -75,7 +75,7 @@ const Index = () => {
         </div>
 
         {/* Call to Action Section */}
-        <div className="text-center mb-20">
+        <div className="text-center mb-32">
           <h2 className="text-3xl font-bold text-gray-800 mb-4">
             Join the Blood Bank AI Network
           </h2>

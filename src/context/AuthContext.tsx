@@ -300,6 +300,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = () => {
     console.log('AuthContext - LOGOUT CALLED - Starting cleanup process');
     
+    const currentUserType = userType;
+    
     setCurrentUser(null);
     setUserType(null);
     
@@ -318,9 +320,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       description: "You have been logged out of the system.",
     });
     
-    console.log('AuthContext - Forcing navigation to home page');
+    console.log('AuthContext - Navigating to appropriate login page');
+    
+    // Navigate to appropriate login page based on user type
     setTimeout(() => {
-      window.location.href = '/';
+      if (currentUserType === 'government') {
+        window.location.href = '/gov-login';
+      } else {
+        window.location.href = '/register';
+      }
     }, 100);
   };
   

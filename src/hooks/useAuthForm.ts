@@ -6,7 +6,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 interface UseAuthFormOptions {
   type: 'login' | 'register';
-  userType: 'hospital' | 'government' | 'donor';
+  userType: 'hospital' | 'government';
 }
 
 export default function useAuthForm({ type, userType }: UseAuthFormOptions) {
@@ -19,13 +19,14 @@ export default function useAuthForm({ type, userType }: UseAuthFormOptions) {
     setIsLoading(true);
     try {
       console.log(`Login attempt for ${userType} with email: ${email}`);
-      const success = await login(email, password, userType, extraData);
-      if (success) {
-        if (userType === 'government') {
+      if (userType === 'government') {
+        const success = await login(email, password, userType);
+        if (success) {
           navigate('/government-dashboard');
-        } else if (userType === 'donor') {
-          navigate('/donor-dashboard');
-        } else {
+        }
+      } else {
+        const success = await login(email, password, userType, extraData);
+        if (success) {
           navigate('/dashboard');
         }
       }
@@ -44,25 +45,23 @@ export default function useAuthForm({ type, userType }: UseAuthFormOptions) {
   const handleRegister = async (email: string, password: string, userData: any) => {
     setIsLoading(true);
     try {
+      // Debug log the userData to check what's being received
       console.log("useAuthForm received userData:", userData);
       
-      if (userType === 'hospital') {
-        if (!userData.hospitalName || typeof userData.hospitalName !== 'string' || userData.hospitalName.trim() === '') {
-          console.error("Hospital name validation failed:", userData);
-          throw new Error('Hospital name is required');
-        }
-        userData.hospitalName = userData.hospitalName.trim();
+      // Ensure hospitalName exists and is not just whitespace
+      if (!userData.hospitalName || typeof userData.hospitalName !== 'string' || userData.hospitalName.trim() === '') {
+        console.error("Hospital name validation failed:", userData);
+        throw new Error('Hospital name is required');
       }
       
+      // Ensure the hospitalName is trimmed to avoid whitespace issues
+      userData.hospitalName = userData.hospitalName.trim();
+      
+      // Pass the userData directly to register
       const success = await register(userData, userType);
       
       if (success) {
-        if (userType === 'hospital') {
-          navigate('/register', { state: { showMessage: `hospital-registered` } });
-        } else if (userType === 'donor') {
-          // Automatically login donor after successful registration
-          await handleLogin(email, password);
-        }
+        navigate('/register', { state: { showMessage: `hospital-registered` } });
       }
     } catch (error) {
       console.error('Registration error:', error);

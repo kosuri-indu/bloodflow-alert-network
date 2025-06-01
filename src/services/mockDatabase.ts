@@ -1,404 +1,512 @@
 import { v4 as uuidv4 } from 'uuid';
 
-export interface BloodInventory {
-  id: string;
-  bloodType: string;
-  rhFactor: 'positive' | 'negative';
-  units: number;
-  processedDate: Date;
-  expirationDate: Date;
-  donorAge: number;
-  specialAttributes: string[];
-  hospitalName: string;
-}
-
-export interface BloodRequest {
-  id: string;
-  hospital: string;
-  bloodType: string;
-  units: number;
-  urgency: 'routine' | 'urgent' | 'critical';
-  patientAge: number;
-  patientWeight: number;
-  medicalCondition: string;
-  neededBy: Date;
-  specialRequirements: string[];
-  matchPercentage: number;
-  createdAt: Date;
-}
-
-export interface Hospital {
+// Define data structures
+interface Hospital {
   id: string;
   name: string;
   address: string;
   contactPerson: string;
   email: string;
-  verified: boolean;
   registrationId: string;
   createdAt: Date;
+  verified: boolean;
 }
 
-export interface Donor {
+interface BloodInventory {
   id: string;
-  name: string;
-  age: number;
+  hospital: string;
   bloodType: string;
   rhFactor: string;
-  location: string;
-  available: boolean;
-  email: string;
-  phone: string;
-  weight: number;
-  address: string;
-  isEligible: boolean;
-  notificationPreferences: {
-    urgentRequests: boolean;
-    donationDrives: boolean;
-    general: boolean;
-  };
+  units: number;
+  expirationDate: Date;
+  processedDate: Date;
+  donorAge: number;
+  specialAttributes?: string[];
 }
 
-export interface DonationDrive {
+interface BloodRequest {
   id: string;
-  eventName: string;
-  description: string;
-  organizerName: string;
-  date: Date;
-  location: string;
-  status: 'upcoming' | 'active' | 'completed';
-  registeredDonors: number;
-  expectedDonors: number;
-  targetBloodTypes: string[];
+  hospital: string;
+  bloodType: string;
+  units: number;
+  patientAge: number;
+  patientWeight: number;
+  medicalCondition: string;
+  urgency: 'routine' | 'urgent' | 'critical';
+  neededBy: Date;
+  specialRequirements?: string[];
+  createdAt: Date;
+  matchPercentage: number;
 }
 
-export interface AiMatch {
+interface AiMatch {
+  donorId: string;
   requestId: string;
   hospitalName: string;
-  hospitalAddress?: string;
+  hospitalAddress: string;
   bloodType: string;
-  bloodRhFactor?: string;
+  bloodRhFactor: string;
   availableUnits: number;
-  matchScore: number;
   distance: number;
-  donorAge?: number;
-  expiryDays?: number;
+  matchScore: number;
+  status: 'potential' | 'contacted';
   specialAttributes?: string[];
-  donorId: string;
-  status: 'available' | 'contacted' | 'potential';
-  compatibilityScore?: number;
-  ageCompatibilityScore?: number;
-  medicalCompatibilityScore?: number;
+  compatibilityScore: number;
+  donorAge: number;
+  expiryDays: number;
+  ageCompatibilityScore: number;
+  medicalCompatibilityScore: number;
 }
 
 class MockDatabaseService {
-  private hospitals: Hospital[] = [];
-  private bloodInventory: BloodInventory[] = [];
-  private bloodRequests: BloodRequest[] = [];
-  private donors: Donor[] = [];
-  private aiMatches: AiMatch[] = [];
-  private donationDrives: DonationDrive[] = [
-    {
-      id: 'drive-1',
-      eventName: 'City Blood Drive 2024',
-      description: 'Annual community blood donation drive',
-      organizerName: 'Red Cross',
-      date: new Date('2024-06-15'),
-      location: 'City Center',
-      status: 'upcoming',
-      registeredDonors: 25,
-      expectedDonors: 100,
-      targetBloodTypes: ['O+', 'O-', 'A+', 'B+']
-    }
-  ];
+  private localStorage: Storage;
 
   constructor() {
-    this.loadFromStorage();
+    this.localStorage = window.localStorage;
+    
+    // Initialize hospitals if not already present
+    if (!this.getFromStorage('hospitals')) {
+      this.setInStorage('hospitals', [
+        {
+          id: 'hospital-1',
+          name: 'City General Hospital',
+          address: '123 Main St, Anytown',
+          contactPerson: 'Dr. Smith',
+          email: 'info@citygeneral.com',
+          registrationId: 'CGH123',
+          createdAt: new Date(),
+          verified: true
+        },
+        {
+          id: 'hospital-2',
+          name: 'Regional Medical Center',
+          address: '456 Oak Ave, Anytown',
+          contactPerson: 'Dr. Johnson',
+          email: 'info@regionalmed.com',
+          registrationId: 'RMC456',
+          createdAt: new Date(),
+          verified: true
+        },
+        {
+          id: 'hospital-3',
+          name: 'Community Health Clinic',
+          address: '789 Pine Ln, Anytown',
+          contactPerson: 'Dr. Williams',
+          email: 'info@communityhealth.com',
+          registrationId: 'CHC789',
+          createdAt: new Date(),
+          verified: false
+        }
+      ]);
+    }
+    
+    // Initialize blood inventory if not already present
+    if (!this.getFromStorage('allBloodInventory')) {
+      this.setInStorage('allBloodInventory', [
+        {
+          id: 'inventory-1',
+          hospital: 'City General Hospital',
+          bloodType: 'A',
+          rhFactor: 'positive',
+          units: 15,
+          expirationDate: new Date(new Date().setDate(new Date().getDate() + 30)),
+          processedDate: new Date(new Date().setDate(new Date().getDate() - 5)),
+          donorAge: 25,
+          specialAttributes: ['irradiated', 'leukoreduced']
+        },
+        {
+          id: 'inventory-2',
+          hospital: 'Regional Medical Center',
+          bloodType: 'B',
+          rhFactor: 'negative',
+          units: 8,
+          expirationDate: new Date(new Date().setDate(new Date().getDate() + 20)),
+          processedDate: new Date(new Date().setDate(new Date().getDate() - 3)),
+          donorAge: 30,
+          specialAttributes: ['cmv-negative']
+        },
+        {
+          id: 'inventory-3',
+          hospital: 'Community Health Clinic',
+          bloodType: 'O',
+          rhFactor: 'positive',
+          units: 12,
+          expirationDate: new Date(new Date().setDate(new Date().getDate() + 45)),
+          processedDate: new Date(new Date().setDate(new Date().getDate() - 7)),
+          donorAge: 22
+        }
+      ]);
+    }
+    
+    // Initialize blood requests if not already present
+    if (!this.getFromStorage('allBloodRequests')) {
+      this.setInStorage('allBloodRequests', [
+        {
+          id: 'request-1',
+          hospital: 'City General Hospital',
+          bloodType: 'A Rh+ (A+)',
+          units: 2,
+          patientAge: 60,
+          patientWeight: 75,
+          medicalCondition: 'Anemia',
+          urgency: 'urgent',
+          neededBy: new Date(new Date().setDate(new Date().getDate() + 7)),
+          specialRequirements: ['irradiated'],
+          createdAt: new Date(),
+          matchPercentage: 0
+        },
+        {
+          id: 'request-2',
+          hospital: 'Regional Medical Center',
+          bloodType: 'O Rh- (O-)',
+          units: 1,
+          patientAge: 45,
+          patientWeight: 68,
+          medicalCondition: 'Trauma',
+          urgency: 'critical',
+          neededBy: new Date(new Date().setDate(new Date().getDate() + 2)),
+          createdAt: new Date(),
+          matchPercentage: 0
+        }
+      ]);
+    }
   }
 
-  private generateId(): string {
-    return uuidv4();
+  // Utility functions for local storage
+  private getFromStorage(key: string): any {
+    const item = this.localStorage.getItem(key);
+    return item ? JSON.parse(item) : null;
   }
 
-  private saveToStorage(): void {
-    localStorage.setItem('bloodBank_hospitals', JSON.stringify(this.hospitals));
-    localStorage.setItem('bloodBank_inventory', JSON.stringify(this.bloodInventory));
-    localStorage.setItem('bloodBank_requests', JSON.stringify(this.bloodRequests));
-    localStorage.setItem('bloodBank_donors', JSON.stringify(this.donors));
-    localStorage.setItem('bloodBank_aiMatches', JSON.stringify(this.aiMatches));
-    localStorage.setItem('bloodBank_donationDrives', JSON.stringify(this.donationDrives));
+  private setInStorage(key: string, data: any): void {
+    this.localStorage.setItem(key, JSON.stringify(data));
   }
 
-  private loadFromStorage(): void {
-    const hospitalsData = localStorage.getItem('bloodBank_hospitals');
-    if (hospitalsData) {
-      this.hospitals = JSON.parse(hospitalsData);
-    }
+  // Hospital management functions
+  async registerHospital(hospital: Omit<Hospital, 'id' | 'createdAt' | 'verified'>): Promise<Hospital> {
+    const newHospital: Hospital = {
+      id: uuidv4(),
+      ...hospital,
+      createdAt: new Date(),
+      verified: false
+    };
+    const pendingHospitals = this.getFromStorage('pendingHospitals') || [];
+    this.setInStorage('pendingHospitals', [...pendingHospitals, newHospital]);
+    console.log(`🏥 Hospital registered: ${newHospital.name}`);
+    return newHospital;
+  }
 
-    const inventoryData = localStorage.getItem('bloodBank_inventory');
-    if (inventoryData) {
-      this.bloodInventory = JSON.parse(inventoryData);
+  async approveHospital(hospitalId: string): Promise<boolean> {
+    const pendingHospitals = this.getFromStorage('pendingHospitals') || [];
+    const approvedHospitalIndex = pendingHospitals.findIndex((h: Hospital) => h.id === hospitalId);
+    if (approvedHospitalIndex === -1) {
+      console.log(`Hospital not found in pending registrations: ${hospitalId}`);
+      return false;
     }
+    const approvedHospital = pendingHospitals[approvedHospitalIndex];
+    approvedHospital.verified = true;
+    
+    // Remove from pending and add to verified hospitals
+    const updatedPendingHospitals = pendingHospitals.filter((h: Hospital) => h.id !== hospitalId);
+    this.setInStorage('pendingHospitals', updatedPendingHospitals);
+    
+    const hospitals = this.getFromStorage('hospitals') || [];
+    this.setInStorage('hospitals', [...hospitals, approvedHospital]);
+    
+    console.log(`✅ Hospital approved: ${approvedHospital.name}`);
+    return true;
+  }
 
-    const requestsData = localStorage.getItem('bloodBank_requests');
-    if (requestsData) {
-      this.bloodRequests = JSON.parse(requestsData);
-    }
-
-    const donorsData = localStorage.getItem('bloodBank_donors');
-    if (donorsData) {
-      this.donors = JSON.parse(donorsData);
-    }
-
-    const aiMatchesData = localStorage.getItem('bloodBank_aiMatches');
-    if (aiMatchesData) {
-      this.aiMatches = JSON.parse(aiMatchesData);
-    }
-
-    const drivesData = localStorage.getItem('bloodBank_donationDrives');
-    if (drivesData) {
-      this.donationDrives = JSON.parse(drivesData);
+  async deleteHospital(hospitalId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      let hospitals = this.getFromStorage('hospitals') || [];
+      let pendingHospitals = this.getFromStorage('pendingHospitals') || [];
+      
+      // Filter out the hospital to be deleted
+      hospitals = hospitals.filter((hospital: Hospital) => hospital.id !== hospitalId);
+      pendingHospitals = pendingHospitals.filter((hospital: Hospital) => hospital.id !== hospitalId);
+      
+      // Update local storage
+      this.setInStorage('hospitals', hospitals);
+      this.setInStorage('pendingHospitals', pendingHospitals);
+      
+      console.log(`❌ Hospital deleted: ${hospitalId}`);
+      return { success: true };
+    } catch (error) {
+      console.error(`Error deleting hospital ${hospitalId}:`, error);
+      return { success: false, error: 'Failed to delete hospital' };
     }
   }
 
   async getRegisteredHospitals(): Promise<Hospital[]> {
-    return this.hospitals.filter(h => h.verified);
+    const hospitals = this.getFromStorage('hospitals') || [];
+    return hospitals.filter((hospital: Hospital) => hospital.verified);
   }
 
   async getPendingHospitals(): Promise<Hospital[]> {
-    return this.hospitals.filter(h => !h.verified);
+    const pendingHospitals = this.getFromStorage('pendingHospitals') || [];
+    return pendingHospitals.filter((hospital: Hospital) => !hospital.verified);
   }
 
-  async getAllHospitalsWithData(): Promise<Array<{
-    hospital: Hospital;
-    inventory: BloodInventory[];
-    requests: BloodRequest[];
-  }>> {
-    return this.hospitals.map(hospital => ({
-      hospital,
-      inventory: this.bloodInventory.filter(inv => inv.hospitalName === hospital.name),
-      requests: this.bloodRequests.filter(req => req.hospital === hospital.name)
-    }));
+  async getAllHospitalsWithData(): Promise<{ hospital: Hospital; inventory: BloodInventory[]; requests: BloodRequest[]; }[]> {
+    const hospitals = await this.getRegisteredHospitals();
+    return Promise.all(
+      hospitals.map(async (hospital) => {
+        const inventory = await this.getHospitalBloodInventory(hospital.name);
+        const requests = await this.getHospitalBloodRequests(hospital.name);
+        return { hospital, inventory, requests };
+      })
+    );
   }
 
-  async getHospitalProfile(hospitalName?: string): Promise<Hospital> {
-    const currentHospital = hospitalName || this.getCurrentHospitalName();
-    const hospital = this.hospitals.find(h => h.name === currentHospital);
-    
-    if (!hospital) {
-      throw new Error('Hospital not found');
-    }
-    
-    return hospital;
+  async getAllData(): Promise<{ hospitals: Hospital[]; inventory: BloodInventory[]; requests: BloodRequest[]; }> {
+    const hospitals = await this.getRegisteredHospitals();
+    const inventory = await this.getBloodInventoryDetails();
+    const requests = await this.getBloodRequests();
+    return { hospitals, inventory, requests };
   }
 
-  private getCurrentHospitalName(): string {
-    const authData = localStorage.getItem('bloodbank_user');
-    if (authData) {
-      const parsed = JSON.parse(authData);
-      return parsed.hospitalName || 'City General Hospital';
-    }
-    return 'City General Hospital';
-  }
-
-  async addBloodInventory(hospitalName: string, inventory: Omit<BloodInventory, 'id' | 'hospitalName'>): Promise<BloodInventory> {
-    const newInventory: BloodInventory = {
-      id: this.generateId(),
-      ...inventory,
-      hospitalName
+  async getHospitalProfile(): Promise<Hospital> {
+    // For demo purposes, return the first hospital
+    const hospitals = await this.getRegisteredHospitals();
+    return hospitals[0] || {
+      id: 'default',
+      name: 'Default Hospital',
+      address: '123 Default St',
+      contactPerson: 'Dr. Default',
+      email: 'default@hospital.com',
+      registrationId: 'DEF123',
+      createdAt: new Date(),
+      verified: true
     };
-    
-    this.bloodInventory.push(newInventory);
-    this.saveToStorage();
-    return newInventory;
-  }
-
-  async getHospitalBloodInventory(hospitalName: string): Promise<BloodInventory[]> {
-    return this.bloodInventory.filter(item => item.hospitalName === hospitalName);
-  }
-
-  async getHospitalBloodRequests(hospitalName: string): Promise<BloodRequest[]> {
-    return this.bloodRequests.filter(req => req.hospital === hospitalName);
-  }
-
-  async getBloodRequests(): Promise<BloodRequest[]> {
-    return [...this.bloodRequests];
-  }
-
-  async getBloodInventoryDetails(): Promise<BloodInventory[]> {
-    return [...this.bloodInventory];
-  }
-
-  async updateBloodRequest(requestId: string, updates: Partial<BloodRequest>): Promise<{ success: boolean; error?: string }> {
-    const requestIndex = this.bloodRequests.findIndex(req => req.id === requestId);
-    
-    if (requestIndex === -1) {
-      return { success: false, error: 'Request not found' };
-    }
-    
-    this.bloodRequests[requestIndex] = { ...this.bloodRequests[requestIndex], ...updates };
-    this.saveToStorage();
-    return { success: true };
-  }
-
-  async contactHospital(donorId: string, requestId: string): Promise<{ success: boolean; error?: string }> {
-    console.log(`Contacting hospital for donor ${donorId} and request ${requestId}`);
-    return { success: true };
-  }
-
-  async deleteHospital(hospitalId: string): Promise<{ success: boolean; error?: string }> {
-    const hospitalIndex = this.hospitals.findIndex(h => h.id === hospitalId);
-    
-    if (hospitalIndex === -1) {
-      return { success: false, error: 'Hospital not found' };
-    }
-    
-    const hospitalName = this.hospitals[hospitalIndex].name;
-    this.hospitals.splice(hospitalIndex, 1);
-    this.bloodInventory = this.bloodInventory.filter(inv => inv.hospitalName !== hospitalName);
-    this.bloodRequests = this.bloodRequests.filter(req => req.hospital !== hospitalName);
-    
-    this.saveToStorage();
-    return { success: true };
   }
 
   async verifyHospital(hospitalId: string): Promise<{ success: boolean; error?: string; hospitalName?: string }> {
-    const hospitalIndex = this.hospitals.findIndex(h => h.id === hospitalId);
-    
-    if (hospitalIndex === -1) {
-      return { success: false, error: 'Hospital not found' };
+    try {
+      const pendingHospitals = this.getFromStorage('pendingHospitals') || [];
+      const approvedHospitalIndex = pendingHospitals.findIndex((h: Hospital) => h.id === hospitalId);
+      
+      if (approvedHospitalIndex === -1) {
+        console.log(`Hospital not found in pending registrations: ${hospitalId}`);
+        return { success: false, error: 'Hospital not found in pending registrations' };
+      }
+      
+      const approvedHospital = pendingHospitals[approvedHospitalIndex];
+      approvedHospital.verified = true;
+      
+      // Remove from pending and add to verified hospitals
+      const updatedPendingHospitals = pendingHospitals.filter((h: Hospital) => h.id !== hospitalId);
+      this.setInStorage('pendingHospitals', updatedPendingHospitals);
+      
+      const hospitals = this.getFromStorage('hospitals') || [];
+      this.setInStorage('hospitals', [...hospitals, approvedHospital]);
+      
+      console.log(`✅ Hospital approved: ${approvedHospital.name}`);
+      return { success: true, hospitalName: approvedHospital.name };
+    } catch (error) {
+      console.error(`Error verifying hospital ${hospitalId}:`, error);
+      return { success: false, error: 'Failed to verify hospital' };
     }
-    
-    this.hospitals[hospitalIndex].verified = true;
-    this.saveToStorage();
-    return { success: true, hospitalName: this.hospitals[hospitalIndex].name };
   }
 
-  async registerHospital(hospitalData: Omit<Hospital, 'id' | 'verified' | 'createdAt'>): Promise<{ success: boolean; error?: string }> {
-    const existingHospital = this.hospitals.find(h => h.email === hospitalData.email);
-    
-    if (existingHospital) {
-      return { success: false, error: 'Hospital with this email already exists' };
-    }
-    
-    const newHospital: Hospital = {
-      id: this.generateId(),
-      ...hospitalData,
-      verified: false,
-      createdAt: new Date()
+  // Blood inventory functions
+  async addBloodInventory(hospitalName: string, inventory: Omit<BloodInventory, 'id' | 'hospital'>): Promise<BloodInventory> {
+    const newInventory: BloodInventory = {
+      id: uuidv4(),
+      hospital: hospitalName,
+      ...inventory
     };
-    
-    this.hospitals.push(newHospital);
-    this.saveToStorage();
-    return { success: true };
+
+    const hospitalKey = `bloodInventory_${hospitalName}`;
+    const existingInventory = this.getFromStorage(hospitalKey) || [];
+    const updatedInventory = [...existingInventory, newInventory];
+    this.setInStorage(hospitalKey, updatedInventory);
+
+    // Also add to global inventory
+    const allInventory = this.getFromStorage('allBloodInventory') || [];
+    this.setInStorage('allBloodInventory', [...allInventory, newInventory]);
+
+    console.log(`🩸 New blood inventory added: ${newInventory.bloodType} to ${hospitalName}`);
+
+    // Trigger auto-matching for pending requests
+    setTimeout(() => {
+      import('./autoMatchingService').then(({ autoMatchingService }) => {
+        autoMatchingService.processNewInventory(hospitalName);
+      });
+    }, 1000);
+
+    return newInventory;
   }
 
-  async getDonors(): Promise<Donor[]> {
-    return [...this.donors];
+  async getBloodInventoryDetails(): Promise<BloodInventory[]> {
+    const allInventory = this.getFromStorage('allBloodInventory') || [];
+    return allInventory;
   }
 
-  async registerDonor(donorData: Omit<Donor, 'id'>): Promise<{ success: boolean; error?: string }> {
-    const existingDonor = this.donors.find(d => d.email === donorData.email);
-    
-    if (existingDonor) {
-      return { success: false, error: 'Donor with this email already exists' };
-    }
-    
-    const newDonor: Donor = {
-      id: this.generateId(),
-      ...donorData,
-      available: true,
-      location: donorData.location || 'Unknown'
-    };
-    
-    this.donors.push(newDonor);
-    this.saveToStorage();
-    return { success: true };
+  async getHospitalBloodInventory(hospitalName: string): Promise<BloodInventory[]> {
+    const hospitalKey = `bloodInventory_${hospitalName}`;
+    const inventory = this.getFromStorage(hospitalKey) || [];
+    return inventory;
   }
 
-  async getDonationDrives(): Promise<DonationDrive[]> {
-    return [...this.donationDrives];
-  }
-
-  async registerForDonationDrive(driveId: string, donorId: string): Promise<{ success: boolean; error?: string }> {
-    const driveIndex = this.donationDrives.findIndex(d => d.id === driveId);
-    
-    if (driveIndex === -1) {
-      return { success: false, error: 'Donation drive not found' };
-    }
-    
-    this.donationDrives[driveIndex].registeredDonors += 1;
-    this.saveToStorage();
-    return { success: true };
-  }
-
-  async getAllData(): Promise<{
-    hospitals: Hospital[];
-    donors: Donor[];
-    bloodInventory: BloodInventory[];
-    bloodRequests: BloodRequest[];
-  }> {
-    return {
-      hospitals: this.hospitals,
-      donors: this.donors,
-      bloodInventory: this.bloodInventory,
-      bloodRequests: this.bloodRequests
-    };
-  }
-
-  async createBloodRequest(request: Omit<BloodRequest, 'id' | 'matchPercentage' | 'createdAt'>): Promise<{ success: boolean; error?: string; requestId?: string }> {
+  // Blood request functions
+  async addBloodRequest(hospitalName: string, request: Omit<BloodRequest, 'id' | 'hospital' | 'createdAt' | 'matchPercentage'>): Promise<BloodRequest> {
     const newRequest: BloodRequest = {
-      id: this.generateId(),
+      id: uuidv4(),
+      hospital: hospitalName,
       ...request,
-      matchPercentage: 0,
-      createdAt: new Date()
+      createdAt: new Date(),
+      matchPercentage: 0
     };
-    
-    this.bloodRequests.push(newRequest);
-    this.saveToStorage();
-    return { success: true, requestId: newRequest.id };
+
+    const hospitalKey = `bloodRequests_${hospitalName}`;
+    const existingRequests = this.getFromStorage(hospitalKey) || [];
+    const updatedRequests = [...existingRequests, newRequest];
+    this.setInStorage(hospitalKey, updatedRequests);
+
+    // Also add to global requests
+    const allRequests = this.getFromStorage('allBloodRequests') || [];
+    this.setInStorage('allBloodRequests', [...allRequests, newRequest]);
+
+    console.log(`📋 New blood request added: ${newRequest.bloodType} for ${hospitalName}`);
+
+    // Trigger auto-matching after a short delay
+    setTimeout(() => {
+      // Import the service dynamically to avoid circular dependencies
+      import('./autoMatchingService').then(({ autoMatchingService }) => {
+        autoMatchingService.processNewRequest(newRequest.id);
+      });
+    }, 1000);
+
+    return newRequest;
   }
 
+  async createBloodRequest(request: Omit<BloodRequest, 'id' | 'createdAt' | 'matchPercentage'>): Promise<{ success: boolean; requestId?: string; error?: string }> {
+    try {
+      const newRequest: BloodRequest = {
+        id: uuidv4(),
+        ...request,
+        createdAt: new Date(),
+        matchPercentage: 0
+      };
+
+      const hospitalKey = `bloodRequests_${request.hospital}`;
+      const existingRequests = this.getFromStorage(hospitalKey) || [];
+      const updatedRequests = [...existingRequests, newRequest];
+      this.setInStorage(hospitalKey, updatedRequests);
+
+      // Also add to global requests
+      const allRequests = this.getFromStorage('allBloodRequests') || [];
+      this.setInStorage('allBloodRequests', [...allRequests, newRequest]);
+
+      console.log(`📋 New blood request created: ${newRequest.bloodType} for ${request.hospital}`);
+
+      // Trigger auto-matching after a short delay
+      setTimeout(() => {
+        import('./autoMatchingService').then(({ autoMatchingService }) => {
+          autoMatchingService.processNewRequest(newRequest.id);
+        });
+      }, 1000);
+
+      return { success: true, requestId: newRequest.id };
+    } catch (error) {
+      console.error('Error creating blood request:', error);
+      return { success: false, error: 'Failed to create blood request' };
+    }
+  }
+
+  async getBloodRequests(): Promise<BloodRequest[]> {
+    const allRequests = this.getFromStorage('allBloodRequests') || [];
+    return allRequests;
+  }
+
+  async getHospitalBloodRequests(hospitalName: string): Promise<BloodRequest[]> {
+    const hospitalKey = `bloodRequests_${hospitalName}`;
+    const requests = this.getFromStorage(hospitalKey) || [];
+    return requests;
+  }
+
+  async updateBloodRequest(requestId: string, updates: Partial<BloodRequest>): Promise<BloodRequest | null> {
+    const allRequests = this.getFromStorage('allBloodRequests') || [];
+    const requestIndex = allRequests.findIndex((req: BloodRequest) => req.id === requestId);
+    
+    if (requestIndex === -1) {
+      console.log(`Request not found: ${requestId}`);
+      return null;
+    }
+    
+    const updatedRequest = { ...allRequests[requestIndex], ...updates };
+    allRequests[requestIndex] = updatedRequest;
+    this.setInStorage('allBloodRequests', allRequests);
+    
+    // Update hospital-specific requests as well
+    const hospitalName = updatedRequest.hospital;
+    const hospitalKey = `bloodRequests_${hospitalName}`;
+    const hospitalRequests = this.getFromStorage(hospitalKey) || [];
+    const hospitalRequestIndex = hospitalRequests.findIndex((req: BloodRequest) => req.id === requestId);
+    
+    if (hospitalRequestIndex !== -1) {
+      hospitalRequests[hospitalRequestIndex] = updatedRequest;
+      this.setInStorage(hospitalKey, hospitalRequests);
+    }
+    
+    console.log(`Blood request updated: ${requestId}`);
+    return updatedRequest;
+  }
+
+  // AI Matching simulation (simplified)
   async findPotentialMatches(requestId: string): Promise<AiMatch[]> {
-    const request = this.bloodRequests.find(req => req.id === requestId);
+    const bloodRequests = await this.getBloodRequests();
+    const inventory = await this.getBloodInventoryDetails();
+    const hospitals = await this.getRegisteredHospitals();
+    
+    const request = bloodRequests.find(req => req.id === requestId);
     if (!request) {
-      console.warn(`Request with ID ${requestId} not found.`);
+      console.log(`Request not found: ${requestId}`);
       return [];
     }
 
     const potentialMatches: AiMatch[] = [];
-    this.bloodInventory.forEach(inventory => {
-      if (inventory.bloodType === request.bloodType.split(' ')[0]) {
-        const matchScore = Math.floor(Math.random() * (95 - 70 + 1)) + 70;
-        const distance = Math.floor(Math.random() * 100) + 1;
+    inventory.forEach(inv => {
+      const hospital = hospitals.find(h => h.name === inv.hospital);
+      if (!hospital) return;
 
-        const donor = this.donors.find(d => d.bloodType === inventory.bloodType && d.rhFactor === inventory.rhFactor);
-
-        if (donor) {
-          const aiMatch: AiMatch = {
-            requestId: request.id,
-            hospitalName: inventory.hospitalName,
-            bloodType: inventory.bloodType,
-            availableUnits: inventory.units,
-            matchScore: matchScore,
-            distance: distance,
-            donorAge: inventory.donorAge,
-            expiryDays: Math.floor(Math.random() * 42) + 1,
-            specialAttributes: inventory.specialAttributes,
-            donorId: donor.id,
-            status: 'available',
-            compatibilityScore: matchScore,
-            bloodRhFactor: inventory.rhFactor
-          };
-          potentialMatches.push(aiMatch);
-        }
+      if (inv.bloodType === request.bloodType.split(' ')[0] && inv.units > 0) {
+        potentialMatches.push({
+          donorId: hospital.id,
+          requestId: request.id,
+          hospitalName: hospital.name,
+          hospitalAddress: hospital.address,
+          bloodType: inv.bloodType,
+          bloodRhFactor: inv.rhFactor,
+          availableUnits: inv.units,
+          distance: Math.floor(Math.random() * 100),
+          matchScore: Math.floor(Math.random() * 100),
+          status: 'potential',
+          compatibilityScore: 75,
+          donorAge: inv.donorAge,
+          expiryDays: 30,
+          ageCompatibilityScore: 90,
+          medicalCompatibilityScore: 95
+        });
       }
     });
 
-    this.aiMatches = potentialMatches;
-    this.saveToStorage();
     return potentialMatches;
+  }
+
+  async contactHospital(hospitalId: string, requestId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Simulate contacting the hospital
+      console.log(`📞 Contacting hospital ${hospitalId} for request ${requestId}`);
+      return { success: true };
+    } catch (error) {
+      console.error(`Error contacting hospital ${hospitalId}:`, error);
+      return { success: false, error: 'Failed to contact hospital' };
+    }
   }
 }
 
 const mockDatabaseService = new MockDatabaseService();
 export default mockDatabaseService;
+export type { Hospital, BloodInventory, BloodRequest, AiMatch };

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import mockDatabaseService, { AiMatch, BloodRequest, BloodInventory } from '@/services/mockDatabase';
@@ -119,9 +120,11 @@ export function useAiMatching() {
     });
 
     try {
+      // Get actual inventory data for matching
       const inventory = await mockDatabaseService.getBloodInventoryDetails();
       const hospitals = await mockDatabaseService.getRegisteredHospitals();
       
+      // Find the blood request
       const bloodRequests = await mockDatabaseService.getBloodRequests();
       const bloodRequest = bloodRequests.find(req => req.id === request.id);
       
@@ -131,14 +134,16 @@ export function useAiMatching() {
 
       console.log(`🤖 AI Matching for: ${bloodRequest.bloodType}, Patient Age: ${bloodRequest.patientAge}, Condition: ${bloodRequest.medicalCondition}`);
 
+      // Create matches based on actual inventory with realistic medical criteria
       const potentialMatches: AiMatch[] = [];
       
       inventory.forEach(inv => {
-        const hospital = hospitals.find(h => h.name === inv.hospitalName);
+        const hospital = hospitals.find(h => h.name === inv.hospital);
         if (!hospital || inv.units <= 0) return;
         
         const donorBloodType = formatBloodType(inv.bloodType, inv.rhFactor);
         
+        // Calculate compatibility scores
         const bloodCompatibilityScore = calculateBloodCompatibilityScore(donorBloodType, bloodRequest.bloodType);
         const ageCompatibilityScore = calculateAgeCompatibilityScore(inv.donorAge, bloodRequest.patientAge);
         const medicalCompatibilityScore = calculateMedicalCompatibilityScore(
@@ -147,27 +152,34 @@ export function useAiMatching() {
           bloodRequest.specialRequirements || []
         );
         
+        // Only include if blood type is compatible
         if (bloodCompatibilityScore > 0) {
+          // Calculate distance (simulated based on hospital location)
           const distance = Math.floor(Math.random() * 25) + 1;
           
+          // Check expiration date compatibility
           const daysUntilExpiry = Math.floor((new Date(inv.expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
           const expiryScore = daysUntilExpiry <= 0 ? 0 : daysUntilExpiry >= 14 ? 100 : (daysUntilExpiry * 7);
           
+          // Calculate units availability score
           const unitsAvailableScore = Math.min(inv.units / bloodRequest.units, 1) * 100;
           const distanceScore = Math.max(0, 100 - (distance * 2));
           
+          // Calculate urgency multiplier
           const urgencyMultiplier = bloodRequest.urgency === 'critical' ? 1.3 : 
                                     bloodRequest.urgency === 'urgent' ? 1.15 : 1.0;
           
+          // Final comprehensive score calculation
           const finalScore = Math.round(
-            (bloodCompatibilityScore * 0.3) +
-            (ageCompatibilityScore * 0.25) +
-            (medicalCompatibilityScore * 0.2) +
-            (unitsAvailableScore * 0.15) +
-            (distanceScore * 0.1) +
-            (urgencyMultiplier * 5)
+            (bloodCompatibilityScore * 0.3) +    // Blood type compatibility - 30%
+            (ageCompatibilityScore * 0.25) +     // Age compatibility - 25%
+            (medicalCompatibilityScore * 0.2) +  // Medical compatibility - 20%
+            (unitsAvailableScore * 0.15) +       // Units availability - 15%
+            (distanceScore * 0.1) +              // Distance - 10%
+            (urgencyMultiplier * 5)              // Urgency bonus
           );
           
+          // Only include matches with minimum score and valid expiry
           if (finalScore >= 40 && expiryScore > 0) {
             potentialMatches.push({
               donorId: hospital.id,
@@ -179,7 +191,7 @@ export function useAiMatching() {
               availableUnits: inv.units,
               distance: distance,
               matchScore: Math.min(finalScore, 100),
-              status: 'available',
+              status: 'potential',
               specialAttributes: inv.specialAttributes || [],
               compatibilityScore: bloodCompatibilityScore,
               donorAge: inv.donorAge,
@@ -193,12 +205,14 @@ export function useAiMatching() {
         }
       });
       
+      // Sort by match score (highest first) and take top matches
       const sortedMatches = potentialMatches
         .sort((a, b) => b.matchScore - a.matchScore)
-        .slice(0, 10);
+        .slice(0, 10); // Show top 10 matches
       
       setMatches(sortedMatches);
       
+      // Update the request with match percentage based on best match
       const bestMatchScore = sortedMatches.length > 0 ? sortedMatches[0].matchScore : 0;
       await mockDatabaseService.updateBloodRequest(bloodRequest.id, { 
         matchPercentage: bestMatchScore 
@@ -234,7 +248,10 @@ export function useAiMatching() {
     try {
       const result = await mockDatabaseService.contactHospital(hospitalId, requestId);
       
-      if (result.success) {
+      const processedResult = result as { success: boolean; error?: string };
+      
+      if (processedResult.success) {
+        // Update local matches state
         setMatches(prev => prev.map(match => 
           match.donorId === hospitalId && match.requestId === requestId 
             ? { ...match, status: 'contacted' } 

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Menu, User, LogOut, Brain, Hospital, Briefcase, Heart } from 'lucide-react';
+import { Menu, User, LogOut, Brain, Hospital, Briefcase } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from '../context/AuthContext';
@@ -16,27 +16,6 @@ const Navbar: React.FC = () => {
   const handleLogout = () => {
     console.log('LOGOUT BUTTON CLICKED - Starting logout process');
     logout();
-  };
-
-  const getUserDisplayName = () => {
-    if (userType === 'hospital') return currentUser?.hospitalName;
-    if (userType === 'government') return currentUser?.name;
-    if (userType === 'donor') return currentUser?.name;
-    return currentUser?.name;
-  };
-
-  const getDashboardLink = () => {
-    if (userType === 'hospital') return '/dashboard';
-    if (userType === 'government') return '/government-dashboard';
-    if (userType === 'donor') return '/donor-dashboard';
-    return '/';
-  };
-
-  const getDashboardLabel = () => {
-    if (userType === 'hospital') return 'Hospital Dashboard';
-    if (userType === 'government') return 'Gov Dashboard';
-    if (userType === 'donor') return 'Donor Dashboard';
-    return 'Dashboard';
   };
 
   return (
@@ -58,26 +37,38 @@ const Navbar: React.FC = () => {
               Home
             </Link>
             
+            {/* DEBUG: Show current auth state */}
+            <div className="text-xs bg-yellow-100 px-2 py-1 rounded">
+              Auth: {isAuthenticated ? 'YES' : 'NO'} | Type: {userType || 'NONE'}
+            </div>
+            
             {isAuthenticated ? (
               <>
-                <Link 
-                  to={getDashboardLink()}
-                  className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  {getDashboardLabel()}
-                </Link>
+                {userType === 'hospital' ? (
+                  <Link 
+                    to="/dashboard" 
+                    className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Dashboard
+                  </Link>
+                ) : (
+                  <Link 
+                    to="/government-dashboard" 
+                    className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Gov Dashboard
+                  </Link>
+                )}
                 
                 {/* User info display */}
                 <div className="flex items-center gap-2 px-3 py-1 bg-gray-100 rounded-md">
-                  {userType === 'hospital' && <Hospital size={16} className="text-red-600" />}
-                  {userType === 'government' && <Briefcase size={16} className="text-blue-600" />}
-                  {userType === 'donor' && <Heart size={16} className="text-red-600" />}
+                  <User size={16} className="text-gray-600" />
                   <span className="text-sm font-medium text-gray-700">
-                    {getUserDisplayName()}
+                    {userType === 'hospital' ? currentUser?.hospitalName : currentUser?.name}
                   </span>
                 </div>
                 
-                {/* LOGOUT BUTTON */}
+                {/* VERY PROMINENT LOGOUT BUTTON */}
                 <Button
                   variant="destructive"
                   size="lg"
@@ -94,7 +85,7 @@ const Navbar: React.FC = () => {
                   to="/register" 
                   className="text-gray-700 hover:text-red-600 px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Join Network
+                  Hospital Portal
                 </Link>
                 <Link 
                   to="/gov-login" 
@@ -116,14 +107,17 @@ const Navbar: React.FC = () => {
               </SheetTrigger>
               <SheetContent side="right">
                 <div className="flex flex-col space-y-4 mt-6">
+                  {/* DEBUG INFO FOR MOBILE */}
+                  <div className="text-xs bg-yellow-100 px-2 py-1 rounded mb-4">
+                    Mobile Auth: {isAuthenticated ? 'YES' : 'NO'} | Type: {userType || 'NONE'}
+                  </div>
+
                   {isAuthenticated && (
                     <div className="border-b pb-4 mb-4">
                       <div className="flex items-center gap-2 mb-2">
-                        {userType === 'hospital' && <Hospital size={16} className="text-red-600" />}
-                        {userType === 'government' && <Briefcase size={16} className="text-blue-600" />}
-                        {userType === 'donor' && <Heart size={16} className="text-red-600" />}
+                        <User size={16} className="text-gray-600" />
                         <p className="font-medium text-red-600">
-                          {getUserDisplayName()}
+                          {userType === 'hospital' ? currentUser?.hospitalName : currentUser?.name}
                         </p>
                       </div>
                       <p className="text-sm text-gray-500">{currentUser?.email}</p>
@@ -140,14 +134,23 @@ const Navbar: React.FC = () => {
                   
                   {isAuthenticated ? (
                     <>
-                      <Link 
-                        to={getDashboardLink()}
-                        className="text-gray-700 hover:text-red-600 py-2 text-base font-medium"
-                      >
-                        {getDashboardLabel()}
-                      </Link>
+                      {userType === 'hospital' ? (
+                        <Link 
+                          to="/dashboard" 
+                          className="text-gray-700 hover:text-red-600 py-2 text-base font-medium"
+                        >
+                          Hospital Dashboard
+                        </Link>
+                      ) : (
+                        <Link 
+                          to="/government-dashboard" 
+                          className="text-gray-700 hover:text-red-600 py-2 text-base font-medium"
+                        >
+                          Government Dashboard
+                        </Link>
+                      )}
                       
-                      {/* MOBILE LOGOUT BUTTON */}
+                      {/* MOBILE LOGOUT BUTTON - SUPER PROMINENT */}
                       <Button 
                         variant="destructive"
                         size="lg"
@@ -164,7 +167,7 @@ const Navbar: React.FC = () => {
                         to="/register" 
                         className="text-gray-700 hover:text-red-600 px-4 py-2 rounded-md text-base font-medium text-center"
                       >
-                        Join Network
+                        Hospital Portal
                       </Link>
                       <Link 
                         to="/gov-login" 

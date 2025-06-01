@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -139,11 +140,7 @@ const HospitalLoginForm = () => {
         </Button>
         
         <div className="text-center">
-          <button 
-            type="button" 
-            onClick={() => navigate('/register')}
-            className="text-sm text-red-600 hover:text-red-800"
-          >
+          <button type="button" className="text-sm text-red-600 hover:text-red-800">
             Verification Status?
           </button>
         </div>

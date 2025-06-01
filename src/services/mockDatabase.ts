@@ -271,6 +271,66 @@ class MockDatabaseService {
     return pendingHospitals.filter((hospital: Hospital) => !hospital.verified);
   }
 
+  async getHospitalProfile(hospitalName?: string): Promise<Hospital | null> {
+    const hospitals = await this.getRegisteredHospitals();
+    if (hospitalName) {
+      return hospitals.find(h => h.name === hospitalName) || null;
+    }
+    // If no hospitalName provided, return the first hospital (for current user)
+    return hospitals.length > 0 ? hospitals[0] : null;
+  }
+
+  async deleteHospital(hospitalId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      let hospitals = this.getFromStorage('hospitals');
+      const hospitalIndex = hospitals.findIndex((h: Hospital) => h.id === hospitalId);
+      
+      if (hospitalIndex === -1) {
+        return { success: false, error: 'Hospital not found' };
+      }
+
+      const success = this.performTransaction([
+        () => {
+          hospitals = hospitals.filter((h: Hospital) => h.id !== hospitalId);
+          this.setInStorage('hospitals', hospitals);
+        },
+        () => {
+          // Clear hospital-specific data
+          this.localStorage.removeItem(`bloodInventory_${hospitalId}`);
+          this.localStorage.removeItem(`bloodRequests_${hospitalId}`);
+        },
+        () => {
+          // Remove from global inventory and requests
+          let allInventory = this.getFromStorage('allBloodInventory');
+          allInventory = allInventory.filter((inv: BloodInventory) => inv.hospitalId !== hospitalId);
+          this.setInStorage('allBloodInventory', allInventory);
+          
+          let allRequests = this.getFromStorage('allBloodRequests');
+          allRequests = allRequests.filter((req: BloodRequest) => req.hospitalId !== hospitalId);
+          this.setInStorage('allBloodRequests', allRequests);
+        }
+      ]);
+
+      if (success) {
+        console.log(`🗑️ Hospital deleted: ${hospitalId}`);
+        window.dispatchEvent(new CustomEvent('dataRefresh'));
+        return { success: true };
+      } else {
+        return { success: false, error: 'Transaction failed' };
+      }
+    } catch (error) {
+      console.error('Error deleting hospital:', error);
+      return { success: false, error: 'Failed to delete hospital' };
+    }
+  }
+
+  async getAllHospitalsWithData(): Promise<{ hospitals: Hospital[]; inventory: BloodInventory[]; requests: BloodRequest[]; }> {
+    const hospitals = await this.getRegisteredHospitals();
+    const inventory = await this.getBloodInventoryDetails();
+    const requests = await this.getBloodRequests();
+    return { hospitals, inventory, requests };
+  }
+
   // Blood inventory functions with hospital isolation
   async addBloodInventory(hospitalName: string, inventory: Omit<BloodInventory, 'id' | 'hospital' | 'hospitalId'>): Promise<BloodInventory> {
     const hospitals = await this.getRegisteredHospitals();
@@ -562,6 +622,57 @@ class MockDatabaseService {
   async getDonationDrives(): Promise<DonationDrive[]> {
     const drives = this.getFromStorage('donationDrives');
     return drives;
+  }
+
+  async createBloodRequest(request: Omit<BloodRequest, 'id' | 'hospitalId' | 'createdAt' | 'matchPercentage'>): Promise<{ success: boolean; error?: string; request?: BloodRequest }> {
+    try {
+      const newRequest = await this.addBloodRequest(request.hospital, {
+        bloodType: request.bloodType,
+        units: request.units,
+        patientAge: request.patientAge,
+        patientWeight: request.patientWeight,
+        medicalCondition: request.medicalCondition,
+        urgency: request.urgency,
+        neededBy: request.neededBy,
+        specialRequirements: request.specialRequirements
+      });
+      
+      return { success: true, request: newRequest };
+    } catch (error) {
+      console.error('Error creating blood request:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to create request' };
+    }
+  }
+
+  async contactHospital(hospitalId: string, requestId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Simulate contacting a hospital about a blood request
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const hospitals = await this.getRegisteredHospitals();
+      const hospital = hospitals.find(h => h.id === hospitalId);
+      
+      if (!hospital) {
+        return { success: false, error: 'Hospital not found' };
+      }
+      
+      console.log(`📞 Contacted hospital ${hospital.name} about request ${requestId}`);
+      
+      // Update request status to show it has been contacted
+      const updateResult = await this.updateBloodRequest(requestId, {
+        matchPercentage: Math.min(100, Math.random() * 30 + 70) // Simulate improved matching
+      });
+      
+      if (updateResult.success) {
+        window.dispatchEvent(new CustomEvent('dataRefresh'));
+        return { success: true };
+      } else {
+        return { success: false, error: 'Failed to update request status' };
+      }
+    } catch (error) {
+      console.error('Error contacting hospital:', error);
+      return { success: false, error: 'Failed to contact hospital' };
+    }
   }
 }
 

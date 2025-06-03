@@ -142,6 +142,7 @@ const GovernmentDashboardPage = () => {
       if (result.success) {
         setPendingHospitals(prev => prev.filter(h => h.id !== hospitalId));
         setHospitals(prev => prev.filter(h => h.id !== hospitalId));
+        setHospitalsWithData(prev => prev.filter(h => h.hospital.id !== hospitalId));
         
         toast({
           title: "Hospital Deleted",
@@ -617,7 +618,7 @@ const GovernmentDashboardPage = () => {
                     {hospitalsWithData.map((hospitalData) => (
                       <div key={hospitalData.hospital.id} className="border rounded-lg p-4 bg-white">
                         <div className="flex justify-between items-start mb-4">
-                          <div>
+                          <div className="flex-1">
                             <h3 className="text-xl font-semibold flex items-center">
                               <Hospital className="mr-2 h-5 w-5" />
                               {hospitalData.hospital.name}
@@ -631,13 +632,25 @@ const GovernmentDashboardPage = () => {
                             </p>
                           </div>
                           
-                          <div className="text-right">
-                            <p className="text-sm text-gray-600">
-                              <span className="font-medium">{hospitalData.inventory.reduce((sum, item) => sum + item.units, 0)}</span> blood units
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              <span className="font-medium">{hospitalData.requests.length}</span> active requests
-                            </p>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <p className="text-sm text-gray-600">
+                                <span className="font-medium">{hospitalData.inventory.reduce((sum, item) => sum + item.units, 0)}</span> blood units
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                <span className="font-medium">{hospitalData.requests.length}</span> active requests
+                              </p>
+                            </div>
+                            
+                            <Button 
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteHospital(hospitalData.hospital.id, hospitalData.hospital.name)}
+                              className="flex items-center gap-1"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </Button>
                           </div>
                         </div>
                         

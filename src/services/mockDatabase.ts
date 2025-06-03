@@ -97,11 +97,11 @@ class MockDatabaseService {
 
   constructor() {
     this.localStorage = window.localStorage;
-    this.initializeDefaultData();
+    this.clearAllDataAndInitialize();
   }
 
-  private initializeDefaultData() {
-    // Only initialize if data doesn't exist (preserve existing data)
+  private clearAllDataAndInitialize() {
+    // Clear ALL data - this ensures a completely fresh start
     const dataKeys = [
       'hospitals',
       'allBloodInventory', 
@@ -111,14 +111,25 @@ class MockDatabaseService {
       'donationDrives'
     ];
     
+    // Clear main data keys
     dataKeys.forEach(key => {
-      const existing = this.getFromStorage(key);
-      if (!existing || existing.length === 0) {
-        this.setInStorage(key, []);
-      }
+      this.setInStorage(key, []);
     });
     
-    console.log('💾 Database initialized - preserving existing data');
+    // Clear all hospital-specific data
+    this.clearAllHospitalSpecificData();
+    
+    console.log('💾 Database completely cleared - fresh start initialized');
+  }
+
+  private clearAllHospitalSpecificData() {
+    const allKeys = Object.keys(this.localStorage);
+    allKeys.forEach(key => {
+      if (key.startsWith('bloodInventory_') || key.startsWith('bloodRequests_')) {
+        this.localStorage.removeItem(key);
+        console.log(`🗑️ Cleared hospital-specific data: ${key}`);
+      }
+    });
   }
 
   // Utility functions for local storage with ACID properties
@@ -155,33 +166,8 @@ class MockDatabaseService {
 
   // Manual clear function for testing
   async clearAllData(): Promise<void> {
-    const dataKeys = [
-      'hospitals',
-      'allBloodInventory', 
-      'allBloodRequests',
-      'pendingHospitals',
-      'donors',
-      'donationDrives'
-    ];
-    
-    dataKeys.forEach(key => {
-      this.setInStorage(key, []);
-    });
-    
-    this.clearHospitalSpecificData();
-    console.log('🗑️ All database data manually cleared');
-    
+    this.clearAllDataAndInitialize();
     window.dispatchEvent(new CustomEvent('dataRefresh'));
-  }
-
-  private clearHospitalSpecificData() {
-    const allKeys = Object.keys(this.localStorage);
-    allKeys.forEach(key => {
-      if (key.startsWith('bloodInventory_') || key.startsWith('bloodRequests_')) {
-        this.localStorage.removeItem(key);
-        console.log(`🗑️ Cleared hospital-specific data: ${key}`);
-      }
-    });
   }
 
   // Hospital management functions with ACID properties
@@ -201,7 +187,7 @@ class MockDatabaseService {
     ]);
 
     if (success) {
-      console.log(`🏥 Hospital registered: ${newHospital.name}`);
+      console.log(`🏥 Hospital registered: ${newHospital.name} with ID: ${newHospital.id}`);
       window.dispatchEvent(new CustomEvent('dataRefresh'));
       return newHospital;
     } else {
@@ -233,7 +219,7 @@ class MockDatabaseService {
       ]);
 
       if (success) {
-        console.log(`✅ Hospital approved: ${approvedHospital.name}`);
+        console.log(`✅ Hospital approved: ${approvedHospital.name} with ID: ${approvedHospital.id}`);
         window.dispatchEvent(new CustomEvent('dataRefresh'));
         return { success: true, hospitalName: approvedHospital.name };
       } else {
@@ -267,16 +253,26 @@ class MockDatabaseService {
   async deleteHospital(hospitalId: string): Promise<{ success: boolean; error?: string }> {
     try {
       let hospitals = this.getFromStorage('hospitals');
-      const hospitalIndex = hospitals.findIndex((h: Hospital) => h.id === hospitalId);
+      let pendingHospitals = this.getFromStorage('pendingHospitals');
       
-      if (hospitalIndex === -1) {
+      const hospitalIndex = hospitals.findIndex((h: Hospital) => h.id === hospitalId);
+      const pendingHospitalIndex = pendingHospitals.findIndex((h: Hospital) => h.id === hospitalId);
+      
+      if (hospitalIndex === -1 && pendingHospitalIndex === -1) {
         return { success: false, error: 'Hospital not found' };
       }
 
       const success = this.performTransaction([
         () => {
-          hospitals = hospitals.filter((h: Hospital) => h.id !== hospitalId);
-          this.setInStorage('hospitals', hospitals);
+          if (hospitalIndex !== -1) {
+            hospitals = hospitals.filter((h: Hospital) => h.id !== hospitalId);
+            this.setInStorage('hospitals', hospitals);
+          }
+          
+          if (pendingHospitalIndex !== -1) {
+            pendingHospitals = pendingHospitals.filter((h: Hospital) => h.id !== hospitalId);
+            this.setInStorage('pendingHospitals', pendingHospitals);
+          }
         },
         () => {
           // Clear hospital-specific data

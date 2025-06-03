@@ -433,12 +433,59 @@ class MockDatabaseService {
     const hospital = hospitals.find(h => h.name === hospitalName);
     
     if (!hospital) {
+      console.log(`⚠️ Hospital not found: ${hospitalName}`);
       return [];
     }
 
     const hospitalKey = `bloodInventory_${hospital.id}`;
     const inventory = this.getFromStorage(hospitalKey);
-    return inventory.filter((inv: BloodInventory) => inv.hospitalId === hospital.id);
+    
+    // CRITICAL: Filter by hospital ID to ensure data isolation
+    const hospitalInventory = inventory.filter((inv: BloodInventory) => inv.hospitalId === hospital.id);
+    
+    console.log(`🩸 Retrieved ${hospitalInventory.length} inventory items for hospital ${hospitalName} (ID: ${hospital.id})`);
+    return hospitalInventory;
+  }
+
+  async getHospitalBloodRequests(hospitalName: string): Promise<BloodRequest[]> {
+    const hospitals = await this.getRegisteredHospitals();
+    const hospital = hospitals.find(h => h.name === hospitalName);
+    
+    if (!hospital) {
+      console.log(`⚠️ Hospital not found: ${hospitalName}`);
+      return [];
+    }
+
+    const hospitalKey = `bloodRequests_${hospital.id}`;
+    const requests = this.getFromStorage(hospitalKey);
+    
+    // CRITICAL: Filter by hospital ID to ensure data isolation
+    const hospitalRequests = requests.filter((req: BloodRequest) => req.hospitalId === hospital.id);
+    
+    console.log(`📋 Retrieved ${hospitalRequests.length} requests for hospital ${hospitalName} (ID: ${hospital.id})`);
+    return hospitalRequests;
+  }
+
+  async getHospitalBloodInventoryById(hospitalId: string): Promise<BloodInventory[]> {
+    const hospitalKey = `bloodInventory_${hospitalId}`;
+    const inventory = this.getFromStorage(hospitalKey);
+    
+    // Double-check: Filter by hospital ID to ensure data isolation
+    const hospitalInventory = inventory.filter((inv: BloodInventory) => inv.hospitalId === hospitalId);
+    
+    console.log(`🩸 Retrieved ${hospitalInventory.length} inventory items for hospital ID: ${hospitalId}`);
+    return hospitalInventory;
+  }
+
+  async getHospitalBloodRequestsById(hospitalId: string): Promise<BloodRequest[]> {
+    const hospitalKey = `bloodRequests_${hospitalId}`;
+    const requests = this.getFromStorage(hospitalKey);
+    
+    // Double-check: Filter by hospital ID to ensure data isolation
+    const hospitalRequests = requests.filter((req: BloodRequest) => req.hospitalId === hospitalId);
+    
+    console.log(`📋 Retrieved ${hospitalRequests.length} requests for hospital ID: ${hospitalId}`);
+    return hospitalRequests;
   }
 
   // Blood request functions with hospital isolation
@@ -556,20 +603,6 @@ class MockDatabaseService {
     }
   }
 
-  async getHospitalBloodRequests(hospitalName: string): Promise<BloodRequest[]> {
-    const hospitals = await this.getRegisteredHospitals();
-    const hospital = hospitals.find(h => h.name === hospitalName);
-    
-    if (!hospital) {
-      return [];
-    }
-
-    const hospitalKey = `bloodRequests_${hospital.id}`;
-    const requests = this.getFromStorage(hospitalKey);
-    return requests.filter((req: BloodRequest) => req.hospitalId === hospital.id);
-  }
-
-  // System-wide data access for government dashboard
   async getBloodInventoryDetails(): Promise<BloodInventory[]> {
     const allInventory = this.getFromStorage('allBloodInventory');
     return allInventory;

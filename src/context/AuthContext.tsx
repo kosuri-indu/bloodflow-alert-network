@@ -68,10 +68,11 @@ const authenticateUser = async (email: string, password: string, userType: UserT
         throw new Error('Your hospital account is pending verification by government health officials');
       }
       
+      // CRITICAL: Return the hospital's unique ID for proper data isolation
       return {
         success: true,
         user: {
-          id: hospital.id,
+          id: hospital.id, // This is the key - unique hospital ID
           name: hospital.contactPerson,
           email: hospital.email,
           type: 'hospital' as UserType,
@@ -135,7 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const refreshData = () => {
     setRefreshTrigger(prev => prev + 1);
-    console.log('AuthContext - Data refresh triggered, clearing all caches');
+    console.log('AuthContext - Data refresh triggered for user:', currentUser?.id);
     
     // Force refresh of all components that depend on data
     window.dispatchEvent(new CustomEvent('dataRefresh'));
@@ -152,7 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const user = JSON.parse(storedUser);
         setCurrentUser(user);
         setUserType(storedUserType as UserType);
-        console.log('AuthContext - Auth restored:', { user, userType: storedUserType });
+        console.log('AuthContext - Auth restored for user:', user.id, 'hospital:', user.hospitalName);
       } catch (error) {
         console.error('Error parsing stored user:', error);
         localStorage.removeItem('bloodbank_user');
@@ -182,6 +183,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
         return false;
       }
+      
+      console.log('AuthContext - LOGIN SUCCESS for user:', result.user.id, 'hospital:', result.user.hospitalName);
       
       setCurrentUser(result.user);
       setUserType(type);
@@ -299,14 +302,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const logout = () => {
-    console.log('AuthContext - LOGOUT CALLED - Starting cleanup process');
+    console.log('AuthContext - LOGOUT CALLED for user:', currentUser?.id, 'hospital:', currentUser?.hospitalName);
     
     const currentUserType = userType;
     
     setCurrentUser(null);
     setUserType(null);
     
-    // FIXED: Only clear authentication data, NOT database data
+    // Only clear authentication data, NOT database data
     localStorage.removeItem('bloodbank_user');
     localStorage.removeItem('bloodbank_user_type');
     console.log('AuthContext - Cleared authentication data only, database data preserved');
@@ -342,7 +345,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   console.log('AuthContext - Current state:', { 
     isAuthenticated: !!currentUser && !!userType, 
     userType, 
-    currentUser: currentUser?.name || currentUser?.hospitalName,
+    currentUserId: currentUser?.id,
+    currentUserHospital: currentUser?.hospitalName,
     refreshTrigger
   });
   

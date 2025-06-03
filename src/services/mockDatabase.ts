@@ -94,14 +94,30 @@ interface DonationDrive {
 
 class MockDatabaseService {
   private localStorage: Storage;
+  private isInitialized: boolean = false;
 
   constructor() {
     this.localStorage = window.localStorage;
-    this.clearAllDataAndInitialize();
+    this.initializeIfNeeded();
   }
 
-  private clearAllDataAndInitialize() {
-    // Clear ALL data - this ensures a completely fresh start
+  private initializeIfNeeded() {
+    // Only initialize if data doesn't exist - NEVER clear existing data
+    const hasExistingData = this.localStorage.getItem('bloodbank_initialized');
+    
+    if (!hasExistingData) {
+      console.log('💾 First time initialization - setting up empty data structures');
+      this.initializeEmptyData();
+      this.localStorage.setItem('bloodbank_initialized', 'true');
+    } else {
+      console.log('💾 Database already initialized - preserving existing data');
+    }
+    
+    this.isInitialized = true;
+  }
+
+  private initializeEmptyData() {
+    // Only initialize if the keys don't exist
     const dataKeys = [
       'hospitals',
       'allBloodInventory', 
@@ -111,15 +127,39 @@ class MockDatabaseService {
       'donationDrives'
     ];
     
+    dataKeys.forEach(key => {
+      if (!this.localStorage.getItem(key)) {
+        this.setInStorage(key, []);
+      }
+    });
+  }
+
+  // Manual clear function for testing ONLY - removes the initialized flag
+  async clearAllData(): Promise<void> {
+    const dataKeys = [
+      'hospitals',
+      'allBloodInventory', 
+      'allBloodRequests',
+      'pendingHospitals',
+      'donors',
+      'donationDrives',
+      'bloodbank_initialized'
+    ];
+    
     // Clear main data keys
     dataKeys.forEach(key => {
-      this.setInStorage(key, []);
+      this.localStorage.removeItem(key);
     });
     
     // Clear all hospital-specific data
     this.clearAllHospitalSpecificData();
     
-    console.log('💾 Database completely cleared - fresh start initialized');
+    // Reinitialize
+    this.initializeEmptyData();
+    this.localStorage.setItem('bloodbank_initialized', 'true');
+    
+    console.log('💾 Database manually cleared and reinitialized');
+    window.dispatchEvent(new CustomEvent('dataRefresh'));
   }
 
   private clearAllHospitalSpecificData() {
@@ -162,12 +202,6 @@ class MockDatabaseService {
       console.error('Transaction failed:', error);
       return false;
     }
-  }
-
-  // Manual clear function for testing
-  async clearAllData(): Promise<void> {
-    this.clearAllDataAndInitialize();
-    window.dispatchEvent(new CustomEvent('dataRefresh'));
   }
 
   // Hospital management functions with ACID properties

@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
@@ -309,10 +308,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(null);
     setUserType(null);
     
-    // Only clear authentication data, NOT database data
+    // CRITICAL: Only clear authentication data, NEVER clear hospital/database data
     localStorage.removeItem('bloodbank_user');
     localStorage.removeItem('bloodbank_user_type');
-    console.log('AuthContext - Cleared authentication data only, database data preserved');
+    
+    // DO NOT touch any hospital data or database data
+    console.log('AuthContext - Cleared ONLY authentication data, all hospital data preserved');
     
     toast({
       title: "Logged Out Successfully",

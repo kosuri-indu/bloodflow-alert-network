@@ -11,12 +11,10 @@ import { Trash2, Edit, Plus, Calendar } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import mockDatabaseService, { BloodInventory } from '@/services/mockDatabase';
 import { format } from 'date-fns';
+import { useAuth } from '@/context/AuthContext';
 
-interface InventoryManagerProps {
-  hospitalName: string;
-}
-
-const InventoryManager: React.FC<InventoryManagerProps> = ({ hospitalName }) => {
+const InventoryManager: React.FC = () => {
+  const { currentUser } = useAuth();
   const [inventory, setInventory] = useState<BloodInventory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<BloodInventory | null>(null);
@@ -35,9 +33,21 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ hospitalName }) => 
 
   const fetchInventory = async () => {
     try {
+      if (!currentUser?.id || !currentUser?.hospitalName) {
+        console.log('No current user or hospital name available');
+        setInventory([]);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
-      const data = await mockDatabaseService.getHospitalBloodInventory(hospitalName);
+      console.log('Fetching inventory for hospital ID:', currentUser.id, 'name:', currentUser.hospitalName);
+      
+      // Use hospital ID for data isolation
+      const data = await mockDatabaseService.getHospitalBloodInventoryById(currentUser.id);
       setInventory(data);
+      
+      console.log('Inventory fetched:', data.length, 'items for hospital', currentUser.hospitalName);
     } catch (error) {
       console.error('Error fetching inventory:', error);
       toast({
@@ -52,7 +62,17 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ hospitalName }) => 
 
   useEffect(() => {
     fetchInventory();
-  }, [hospitalName]);
+  }, [currentUser]);
+
+  useEffect(() => {
+    const handleDataRefresh = () => {
+      console.log('Data refresh event received - refreshing inventory');
+      fetchInventory();
+    };
+
+    window.addEventListener('dataRefresh', handleDataRefresh);
+    return () => window.removeEventListener('dataRefresh', handleDataRefresh);
+  }, [currentUser]);
 
   const resetForm = () => {
     setFormData({
@@ -67,6 +87,15 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ hospitalName }) => 
 
   const handleAdd = async () => {
     try {
+      if (!currentUser?.hospitalName) {
+        toast({
+          title: "Error",
+          description: "No hospital information available.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (!formData.bloodType || !formData.expirationDate || formData.units <= 0) {
         toast({
           title: "Validation Error",
@@ -76,7 +105,9 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ hospitalName }) => 
         return;
       }
 
-      await mockDatabaseService.addBloodInventory(hospitalName, {
+      console.log('Adding inventory for hospital:', currentUser.hospitalName, 'ID:', currentUser.id);
+
+      await mockDatabaseService.addBloodInventory(currentUser.hospitalName, {
         bloodType: formData.bloodType,
         rhFactor: formData.rhFactor,
         units: formData.units,
@@ -145,6 +176,8 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ hospitalName }) => 
 
   const handleDelete = async (itemId: string) => {
     try {
+      console.log('Deleting inventory item:', itemId);
+      
       const result = await mockDatabaseService.deleteBloodInventory(itemId);
       
       if (result.success) {
@@ -196,11 +229,21 @@ const InventoryManager: React.FC<InventoryManagerProps> = ({ hospitalName }) => 
     return { color: 'bg-green-500', text: `${daysLeft}d left` };
   };
 
+  if (!currentUser?.hospitalName) {
+    return (
+      <Card>
+        <CardContent className="text-center py-6">
+          <p>Please log in as a hospital to manage inventory.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>Blood Inventory Management</CardTitle>
+          <CardTitle>Blood Inventory Management - {currentUser.hospitalName}</CardTitle>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={resetForm}>

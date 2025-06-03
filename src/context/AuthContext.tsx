@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
@@ -71,7 +72,7 @@ const authenticateUser = async (email: string, password: string, userType: UserT
       return {
         success: true,
         user: {
-          id: hospital.id, // This is the key - unique hospital ID
+          id: hospital.id, // This ensures unique identification by hospital ID
           name: hospital.contactPerson,
           email: hospital.email,
           type: 'hospital' as UserType,
@@ -152,7 +153,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const user = JSON.parse(storedUser);
         setCurrentUser(user);
         setUserType(storedUserType as UserType);
-        console.log('AuthContext - Auth restored for user:', user.id, 'hospital:', user.hospitalName);
+        console.log('AuthContext - Auth restored for user ID:', user.id, 'hospital:', user.hospitalName);
       } catch (error) {
         console.error('Error parsing stored user:', error);
         localStorage.removeItem('bloodbank_user');
@@ -183,7 +184,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      console.log('AuthContext - LOGIN SUCCESS for user:', result.user.id, 'hospital:', result.user.hospitalName);
+      console.log('AuthContext - LOGIN SUCCESS for user ID:', result.user.id, 'hospital:', result.user.hospitalName);
       
       setCurrentUser(result.user);
       setUserType(type);
@@ -301,7 +302,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const logout = () => {
-    console.log('AuthContext - LOGOUT CALLED for user:', currentUser?.id, 'hospital:', currentUser?.hospitalName);
+    console.log('AuthContext - LOGOUT CALLED for user ID:', currentUser?.id, 'hospital:', currentUser?.hospitalName);
     
     const currentUserType = userType;
     

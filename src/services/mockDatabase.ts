@@ -97,30 +97,11 @@ class MockDatabaseService {
 
   constructor() {
     this.localStorage = window.localStorage;
-    this.clearAllDataOnInit();
     this.initializeDefaultData();
   }
 
-  private clearAllDataOnInit() {
-    // Clear ALL database-related data on initialization
-    const allKeys = Object.keys(this.localStorage);
-    allKeys.forEach(key => {
-      if (key.startsWith('hospitals') || 
-          key.startsWith('allBloodInventory') || 
-          key.startsWith('allBloodRequests') ||
-          key.startsWith('pendingHospitals') ||
-          key.startsWith('donors') ||
-          key.startsWith('donationDrives') ||
-          key.startsWith('bloodInventory_') || 
-          key.startsWith('bloodRequests_')) {
-        this.localStorage.removeItem(key);
-      }
-    });
-    console.log('🗑️ ALL DATABASE DATA CLEARED ON INITIALIZATION - FRESH START');
-  }
-
   private initializeDefaultData() {
-    // Initialize completely empty data structures for fresh start
+    // Only initialize if data doesn't exist (preserve existing data)
     const dataKeys = [
       'hospitals',
       'allBloodInventory', 
@@ -131,10 +112,13 @@ class MockDatabaseService {
     ];
     
     dataKeys.forEach(key => {
-      this.setInStorage(key, []);
+      const existing = this.getFromStorage(key);
+      if (!existing || existing.length === 0) {
+        this.setInStorage(key, []);
+      }
     });
     
-    console.log('💾 Database initialized with completely empty data structures - FRESH START');
+    console.log('💾 Database initialized - preserving existing data');
   }
 
   // Utility functions for local storage with ACID properties

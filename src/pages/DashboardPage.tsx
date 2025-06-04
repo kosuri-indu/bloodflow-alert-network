@@ -30,12 +30,13 @@ import { useDashboardStats } from "../hooks/useDashboardStats";
 const DashboardPage = () => {
   const [bloodInventory, setBloodInventory] = useState<BloodInventory[]>([]);
   const [bloodRequests, setBloodRequests] = useState<BloodRequest[]>([]);
-  const [hospitalProfile, setHospitalProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { currentUser, logout } = useAuth();
   const [isAddingInventory, setIsAddingInventory] = useState(false);
   const [isCreatingRequest, setIsCreatingRequest] = useState(false);
+
+  const { stats, isLoading: statsLoading, refreshStats } = useDashboardStats();
 
   const [newInventoryForm, setNewInventoryForm] = useState({
     bloodType: "",
@@ -87,24 +88,44 @@ const DashboardPage = () => {
   };
 
   const refreshAllData = async () => {
+    if (!currentUser?.id || !currentUser?.hospitalName) {
+      console.log('🚫 No current user available - clearing data');
+      setBloodInventory([]);
+      setBloodRequests([]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const profile = await mockDatabaseService.getHospitalProfile();
+      console.log('🔄 Refreshing data for hospital:', currentUser.hospitalName, 'ID:', currentUser.id);
+      
+      // CRITICAL: Use hospital ID for strict data isolation
       const [inventoryDetails, requests] = await Promise.all([
-        mockDatabaseService.getHospitalBloodInventory(profile.name),
-        mockDatabaseService.getHospitalBloodRequests(profile.name)
+        mockDatabaseService.getHospitalBloodInventoryById(currentUser.id),
+        mockDatabaseService.getHospitalBloodRequestsById(currentUser.id)
       ]);
       
-      setHospitalProfile(profile);
-      setBloodInventory(inventoryDetails);
-      setBloodRequests(requests);
+      // Double-check data isolation
+      const verifiedInventory = inventoryDetails.filter(item => item.hospitalId === currentUser.id);
+      const verifiedRequests = requests.filter(req => req.hospitalId === currentUser.id);
+      
+      console.log('✅ Data verified for hospital:', currentUser.hospitalName, {
+        inventory: verifiedInventory.length,
+        requests: verifiedRequests.length
+      });
+      
+      setBloodInventory(verifiedInventory);
+      setBloodRequests(verifiedRequests);
       
       toast({
         title: "Data Refreshed",
-        description: "Your hospital data has been updated successfully.",
+        description: `${currentUser.hospitalName} data updated successfully.`,
       });
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
+      setBloodInventory([]);
+      setBloodRequests([]);
       toast({
         title: "Error",
         description: "Failed to fetch dashboard data.",
@@ -115,9 +136,34 @@ const DashboardPage = () => {
     }
   };
 
+  // CRITICAL: Clear data immediately when user changes
   useEffect(() => {
-    refreshAllData();
-  }, []);
+    console.log('👤 User changed in DashboardPage - clearing and fetching for:', currentUser?.hospitalName, 'ID:', currentUser?.id);
+    
+    // Immediately clear data to prevent showing old data
+    setBloodInventory([]);
+    setBloodRequests([]);
+    
+    if (currentUser?.id) {
+      refreshAllData();
+      refreshStats();
+    } else {
+      setIsLoading(false);
+    }
+  }, [currentUser?.id]);
+
+  useEffect(() => {
+    const handleDataRefresh = () => {
+      console.log('📡 Data refresh event received - refreshing for:', currentUser?.hospitalName);
+      if (currentUser?.id) {
+        refreshAllData();
+        refreshStats();
+      }
+    };
+
+    window.addEventListener('dataRefresh', handleDataRefresh);
+    return () => window.removeEventListener('dataRefresh', handleDataRefresh);
+  }, [currentUser?.id]);
 
   const hospitalStats = {
     totalBloodUnits: bloodInventory.reduce((sum, item) => sum + item.units, 0),
@@ -138,6 +184,15 @@ const DashboardPage = () => {
 
   const handleAddInventory = async () => {
     try {
+      if (!currentUser?.hospitalName || !currentUser?.id) {
+        toast({
+          title: "Error",
+          description: "No hospital information available.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (!newInventoryForm.bloodType || newInventoryForm.units < 1) {
         toast({
           title: "Validation Error",
@@ -146,6 +201,8 @@ const DashboardPage = () => {
         });
         return;
       }
+
+      console.log('➕ Adding inventory for hospital:', currentUser.hospitalName, 'ID:', currentUser.id);
 
       const newInventory = {
         bloodType: newInventoryForm.bloodType,
@@ -157,23 +214,15 @@ const DashboardPage = () => {
         specialAttributes: newInventoryForm.specialAttributes
       };
 
-      await mockDatabaseService.addBloodInventory(hospitalProfile.name, newInventory);
+      await mockDatabaseService.addBloodInventory(currentUser.hospitalName, newInventory);
       await refreshAllData();
 
       toast({
         title: "Inventory Added",
-        description: `${newInventoryForm.units} units of ${formatBloodType(newInventoryForm.bloodType, newInventoryForm.rhFactor)} added to inventory.`,
+        description: `${newInventoryForm.units} units of ${formatBloodType(newInventoryForm.bloodType, newInventoryForm.rhFactor)} added to ${currentUser.hospitalName} inventory.`,
       });
 
-      setNewInventoryForm({
-        bloodType: "",
-        rhFactor: "positive",
-        units: 1,
-        processedDate: format(new Date(), "yyyy-MM-dd"),
-        expirationDate: format(new Date(new Date().setDate(new Date().getDate() + 42)), "yyyy-MM-dd"),
-        donorAge: 30,
-        specialAttributes: []
-      });
+      // ... keep existing code (reset form and close dialog)
       setIsAddingInventory(false);
     } catch (error) {
       console.error("Error adding inventory:", error);
@@ -187,6 +236,15 @@ const DashboardPage = () => {
 
   const handleCreateBloodRequest = async () => {
     try {
+      if (!currentUser?.hospitalName || !currentUser?.id) {
+        toast({
+          title: "Error",
+          description: "No hospital information available.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (!newRequestForm.bloodType || newRequestForm.units < 1) {
         toast({
           title: "Validation Error",
@@ -196,8 +254,10 @@ const DashboardPage = () => {
         return;
       }
 
+      console.log('📝 Creating request for hospital:', currentUser.hospitalName, 'ID:', currentUser.id);
+
       const newRequest = {
-        hospital: hospitalProfile.name,
+        hospital: currentUser.hospitalName,
         bloodType: `${newRequestForm.bloodType} ${newRequestForm.bloodType === 'O' ? 'Rh-' : 'Rh+'} (${newRequestForm.bloodType}${newRequestForm.bloodType === 'O' ? '-' : '+'})`,
         units: newRequestForm.units,
         urgency: newRequestForm.urgency as 'routine' | 'urgent' | 'critical',
@@ -215,19 +275,10 @@ const DashboardPage = () => {
         
         toast({
           title: "Blood Request Created",
-          description: "Your request has been sent to the Government Health Authority for matching.",
+          description: `Request created for ${currentUser.hospitalName} and sent to Government Health Authority.`,
         });
 
-        setNewRequestForm({
-          bloodType: "",
-          units: 1,
-          urgency: "routine",
-          patientAge: 30,
-          patientWeight: 70,
-          medicalCondition: "",
-          neededBy: format(new Date(new Date().setHours(new Date().getHours() + 24)), "yyyy-MM-dd'T'HH:mm"),
-          specialRequirements: []
-        });
+        // ... keep existing code (reset form and close dialog)
         setIsCreatingRequest(false);
       } else {
         toast({
@@ -246,16 +297,34 @@ const DashboardPage = () => {
     }
   };
 
+  // Show login prompt if no user
+  if (!currentUser?.hospitalName) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="text-center py-8">
+            <Hospital className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Hospital Login Required</h2>
+            <p className="text-gray-600 mb-4">Please log in as a hospital to access your dashboard.</p>
+            <Button onClick={() => window.location.href = '/register'}>
+              Go to Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-red-600 mb-2 md:mb-0">
-              {hospitalProfile?.name || 'Hospital'} Dashboard
+              {currentUser.hospitalName} Dashboard
             </h1>
             <p className="text-sm text-gray-500">
-              Manage your blood inventory and requests
+              Hospital ID: {currentUser.id} • Manage your blood inventory and requests
             </p>
           </div>
           
@@ -263,8 +332,8 @@ const DashboardPage = () => {
             <div className="flex items-center gap-2 px-3 py-2 bg-white border rounded-lg shadow-sm">
               <User size={16} className="text-gray-600" />
               <div className="text-sm">
-                <p className="font-medium text-gray-700">{currentUser?.hospitalName}</p>
-                <p className="text-xs text-gray-500">{currentUser?.email}</p>
+                <p className="font-medium text-gray-700">{currentUser.hospitalName}</p>
+                <p className="text-xs text-gray-500">{currentUser.email}</p>
               </div>
             </div>
             
@@ -301,7 +370,7 @@ const DashboardPage = () => {
           </div>
         </div>
 
-        {isLoading ? (
+        {isLoading || statsLoading ? (
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600"></div>
           </div>
@@ -377,7 +446,7 @@ const DashboardPage = () => {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-xl flex items-center justify-between">
-                      <span>Blood Inventory</span>
+                      <span>Blood Inventory - {currentUser.hospitalName}</span>
                       <Button 
                         size="sm" 
                         variant="outline" 
@@ -454,7 +523,7 @@ const DashboardPage = () => {
                           {bloodInventory.length === 0 && (
                             <tr>
                               <td colSpan={5} className="py-8 text-center text-gray-500">
-                                No blood inventory found. Add inventory to get started.
+                                No blood inventory found for {currentUser.hospitalName}. Add inventory to get started.
                               </td>
                             </tr>
                           )}
@@ -469,7 +538,7 @@ const DashboardPage = () => {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-xl flex items-center justify-between">
-                      <span>My Blood Requests</span>
+                      <span>My Blood Requests - {currentUser.hospitalName}</span>
                       <Button 
                         size="sm" 
                         variant="outline"
@@ -574,7 +643,7 @@ const DashboardPage = () => {
                           <Hospital className="h-12 w-12 mx-auto text-gray-400 mb-4" />
                           <p className="text-lg font-medium mb-2">No active blood requests</p>
                           <p className="text-sm text-gray-500 mb-4">
-                            Create a request to get blood from other hospitals through the Government Health Authority.
+                            Create a request for {currentUser.hospitalName} to get blood from other hospitals.
                           </p>
                           <Button onClick={() => setIsCreatingRequest(true)} className="bg-red-600 hover:bg-red-700">
                             Create Your First Request

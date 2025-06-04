@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,22 +33,26 @@ const InventoryManager: React.FC = () => {
   const fetchInventory = async () => {
     try {
       if (!currentUser?.id || !currentUser?.hospitalName) {
-        console.log('No current user or hospital name available');
+        console.log('🚫 No current user or hospital name available - clearing inventory');
         setInventory([]);
         setIsLoading(false);
         return;
       }
 
       setIsLoading(true);
-      console.log('Fetching inventory for hospital ID:', currentUser.id, 'name:', currentUser.hospitalName);
+      console.log('🔍 Fetching inventory for hospital ID:', currentUser.id, 'name:', currentUser.hospitalName);
       
-      // Use hospital ID for data isolation
+      // CRITICAL: Use hospital ID for strict data isolation
       const data = await mockDatabaseService.getHospitalBloodInventoryById(currentUser.id);
-      setInventory(data);
       
-      console.log('Inventory fetched:', data.length, 'items for hospital', currentUser.hospitalName);
+      // Double verification - ensure all inventory belongs to this hospital
+      const verifiedData = data.filter(item => item.hospitalId === currentUser.id);
+      
+      setInventory(verifiedData);
+      console.log('✅ Inventory fetched and verified:', verifiedData.length, 'items for hospital', currentUser.hospitalName);
     } catch (error) {
-      console.error('Error fetching inventory:', error);
+      console.error('❌ Error fetching inventory:', error);
+      setInventory([]);
       toast({
         title: "Error",
         description: "Failed to fetch inventory data.",
@@ -60,19 +63,31 @@ const InventoryManager: React.FC = () => {
     }
   };
 
+  // CRITICAL: Clear inventory immediately when user changes and fetch new data
   useEffect(() => {
-    fetchInventory();
-  }, [currentUser]);
+    console.log('👤 User changed in InventoryManager - clearing and fetching for:', currentUser?.hospitalName, 'ID:', currentUser?.id);
+    
+    // Immediately clear inventory to prevent showing old data
+    setInventory([]);
+    
+    if (currentUser?.id) {
+      fetchInventory();
+    } else {
+      setIsLoading(false);
+    }
+  }, [currentUser?.id]);
 
   useEffect(() => {
     const handleDataRefresh = () => {
-      console.log('Data refresh event received - refreshing inventory');
-      fetchInventory();
+      console.log('📡 Data refresh event received - refreshing inventory for:', currentUser?.hospitalName);
+      if (currentUser?.id) {
+        fetchInventory();
+      }
     };
 
     window.addEventListener('dataRefresh', handleDataRefresh);
     return () => window.removeEventListener('dataRefresh', handleDataRefresh);
-  }, [currentUser]);
+  }, [currentUser?.id]);
 
   const resetForm = () => {
     setFormData({
@@ -105,7 +120,7 @@ const InventoryManager: React.FC = () => {
         return;
       }
 
-      console.log('Adding inventory for hospital:', currentUser.hospitalName, 'ID:', currentUser.id);
+      console.log('➕ Adding inventory for hospital:', currentUser.hospitalName, 'ID:', currentUser.id);
 
       await mockDatabaseService.addBloodInventory(currentUser.hospitalName, {
         bloodType: formData.bloodType,
@@ -126,7 +141,7 @@ const InventoryManager: React.FC = () => {
       resetForm();
       fetchInventory();
     } catch (error) {
-      console.error('Error adding inventory:', error);
+      console.error('❌ Error adding inventory:', error);
       toast({
         title: "Error",
         description: "Failed to add blood inventory.",
@@ -176,7 +191,7 @@ const InventoryManager: React.FC = () => {
 
   const handleDelete = async (itemId: string) => {
     try {
-      console.log('Deleting inventory item:', itemId);
+      console.log('🗑️ Deleting inventory item:', itemId);
       
       const result = await mockDatabaseService.deleteBloodInventory(itemId);
       

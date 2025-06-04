@@ -28,6 +28,22 @@ export function useDashboardStats() {
     try {
       setIsLoading(true);
       
+      // CRITICAL: Reset stats to empty state first to ensure clean slate
+      setStats({
+        totalBloodUnits: 0,
+        aiMatches: 0,
+        partnerHospitals: 0,
+        criticalRequests: 0,
+        lowStockTypes: [],
+        expiringUnits: 0
+      });
+      
+      if (!currentUser?.id) {
+        console.log('🚫 No current user - resetting stats to empty');
+        setIsLoading(false);
+        return;
+      }
+      
       let inventory: BloodInventory[];
       let requests: BloodRequest[];
       
@@ -39,11 +55,11 @@ export function useDashboardStats() {
           mockDatabaseService.getHospitalBloodRequestsById(currentUser.id),
         ]);
         
-        // Double-check data isolation
+        // Triple-check data isolation - ensure we only get data for THIS hospital
         const filteredInventory = inventory.filter(inv => inv.hospitalId === currentUser.id);
         const filteredRequests = requests.filter(req => req.hospitalId === currentUser.id);
         
-        console.log(`🔒 Data isolation verified: ${filteredInventory.length} inventory items, ${filteredRequests.length} requests for hospital ${currentUser.hospitalName}`);
+        console.log(`🔒 Data isolation verified for ${currentUser.hospitalName}: ${filteredInventory.length} inventory items, ${filteredRequests.length} requests`);
         
         inventory = filteredInventory;
         requests = filteredRequests;
@@ -98,29 +114,45 @@ export function useDashboardStats() {
         expiringUnits
       };
 
-      console.log('📊 Dashboard stats updated for user:', currentUser?.id, newStats);
+      console.log('📊 Dashboard stats updated for hospital:', currentUser?.hospitalName, 'ID:', currentUser?.id, newStats);
       setStats(newStats);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
+      // Reset to empty stats on error
+      setStats({
+        totalBloodUnits: 0,
+        aiMatches: 0,
+        partnerHospitals: 0,
+        criticalRequests: 0,
+        lowStockTypes: [],
+        expiringUnits: 0
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
+  // CRITICAL: Clear stats immediately when user changes
   useEffect(() => {
+    console.log('👤 User changed - clearing stats and refreshing for:', currentUser?.hospitalName, 'ID:', currentUser?.id);
+    
+    // Immediately reset stats to prevent showing old data
+    setStats({
+      totalBloodUnits: 0,
+      aiMatches: 0,
+      partnerHospitals: 0,
+      criticalRequests: 0,
+      lowStockTypes: [],
+      expiringUnits: 0
+    });
+    
     if (currentUser?.id) {
       console.log('🔄 Dashboard stats refresh triggered for hospital:', currentUser.hospitalName, 'ID:', currentUser.id);
       refreshStats();
+    } else {
+      console.log('🚫 No user - keeping empty stats');
+      setIsLoading(false);
     }
-    
-    // Set up interval to refresh stats every 5 seconds for real-time updates
-    const interval = setInterval(() => {
-      if (currentUser?.id) {
-        refreshStats();
-      }
-    }, 5000);
-    
-    return () => clearInterval(interval);
   }, [currentUser?.id, userType]);
 
   useEffect(() => {

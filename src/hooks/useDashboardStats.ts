@@ -32,12 +32,21 @@ export function useDashboardStats() {
       let requests: BloodRequest[];
       
       if (userType === 'hospital' && currentUser?.id) {
-        // Hospital-specific stats using hospital ID
-        console.log('Fetching stats for hospital ID:', currentUser.id);
+        // CRITICAL: Hospital-specific stats using hospital ID for complete data isolation
+        console.log('🔒 Fetching ISOLATED stats for hospital ID:', currentUser.id, 'hospital name:', currentUser.hospitalName);
         [inventory, requests] = await Promise.all([
           mockDatabaseService.getHospitalBloodInventoryById(currentUser.id),
           mockDatabaseService.getHospitalBloodRequestsById(currentUser.id),
         ]);
+        
+        // Double-check data isolation
+        const filteredInventory = inventory.filter(inv => inv.hospitalId === currentUser.id);
+        const filteredRequests = requests.filter(req => req.hospitalId === currentUser.id);
+        
+        console.log(`🔒 Data isolation verified: ${filteredInventory.length} inventory items, ${filteredRequests.length} requests for hospital ${currentUser.hospitalName}`);
+        
+        inventory = filteredInventory;
+        requests = filteredRequests;
       } else {
         // System-wide stats for government or fallback
         [inventory, requests] = await Promise.all([
@@ -89,7 +98,7 @@ export function useDashboardStats() {
         expiringUnits
       };
 
-      console.log('Dashboard stats updated for user:', currentUser?.id, newStats);
+      console.log('📊 Dashboard stats updated for user:', currentUser?.id, newStats);
       setStats(newStats);
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
@@ -99,18 +108,27 @@ export function useDashboardStats() {
   };
 
   useEffect(() => {
-    refreshStats();
+    if (currentUser?.id) {
+      console.log('🔄 Dashboard stats refresh triggered for hospital:', currentUser.hospitalName, 'ID:', currentUser.id);
+      refreshStats();
+    }
     
     // Set up interval to refresh stats every 5 seconds for real-time updates
-    const interval = setInterval(refreshStats, 5000);
+    const interval = setInterval(() => {
+      if (currentUser?.id) {
+        refreshStats();
+      }
+    }, 5000);
     
     return () => clearInterval(interval);
   }, [currentUser?.id, userType]);
 
   useEffect(() => {
     const handleDataRefresh = () => {
-      console.log('Data refresh event received - refreshing stats');
-      refreshStats();
+      if (currentUser?.id) {
+        console.log('📡 Data refresh event received - refreshing stats for hospital:', currentUser.hospitalName);
+        refreshStats();
+      }
     };
 
     window.addEventListener('dataRefresh', handleDataRefresh);

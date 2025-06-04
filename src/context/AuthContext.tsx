@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
@@ -68,7 +67,9 @@ const authenticateUser = async (email: string, password: string, userType: UserT
         throw new Error('Your hospital account is pending verification by government health officials');
       }
       
-      // CRITICAL: Return the hospital's unique ID for proper data isolation
+      // CRITICAL: Ensure proper data isolation by hospital ID
+      console.log(`🏥 Hospital login: ${hospital.name} (ID: ${hospital.id}) - ensuring data isolation`);
+      
       return {
         success: true,
         user: {
@@ -154,6 +155,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setCurrentUser(user);
         setUserType(storedUserType as UserType);
         console.log('AuthContext - Auth restored for user ID:', user.id, 'hospital:', user.hospitalName);
+        
+        // CRITICAL: Verify that this hospital still exists and is verified
+        if (storedUserType === 'hospital') {
+          mockDatabaseService.getRegisteredHospitals().then(hospitals => {
+            const hospital = hospitals.find(h => h.id === user.id);
+            if (!hospital || !hospital.verified) {
+              console.log('AuthContext - Hospital no longer exists or not verified, logging out');
+              logout();
+            }
+          });
+        }
       } catch (error) {
         console.error('Error parsing stored user:', error);
         localStorage.removeItem('bloodbank_user');

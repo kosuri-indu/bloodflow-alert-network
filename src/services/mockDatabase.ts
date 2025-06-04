@@ -98,26 +98,25 @@ class MockDatabaseService {
 
   constructor() {
     this.localStorage = window.localStorage;
-    this.initializeIfNeeded();
+    this.initializeCleanDatabase();
   }
 
-  private initializeIfNeeded() {
-    // Only initialize if data doesn't exist - NEVER clear existing data
-    const hasExistingData = this.localStorage.getItem('bloodbank_initialized');
+  private initializeCleanDatabase() {
+    console.log('🗑️ Clearing all existing data and starting fresh...');
     
-    if (!hasExistingData) {
-      console.log('💾 First time initialization - setting up empty data structures');
-      this.initializeEmptyData();
-      this.localStorage.setItem('bloodbank_initialized', 'true');
-    } else {
-      console.log('💾 Database already initialized - preserving existing data');
-    }
+    // Clear ALL data - everything starts empty
+    this.clearAllData();
     
+    // Initialize with empty arrays
+    this.initializeEmptyData();
+    
+    this.localStorage.setItem('bloodbank_initialized', 'true');
     this.isInitialized = true;
+    
+    console.log('✅ Database initialized with completely empty data');
   }
 
   private initializeEmptyData() {
-    // Only initialize if the keys don't exist
     const dataKeys = [
       'hospitals',
       'allBloodInventory', 
@@ -128,14 +127,14 @@ class MockDatabaseService {
     ];
     
     dataKeys.forEach(key => {
-      if (!this.localStorage.getItem(key)) {
-        this.setInStorage(key, []);
-      }
+      this.setInStorage(key, []);
     });
   }
 
-  // Manual clear function for testing ONLY - removes the initialized flag
+  // Manual clear function - removes ALL data
   async clearAllData(): Promise<void> {
+    console.log('🗑️ Clearing ALL database data...');
+    
     const dataKeys = [
       'hospitals',
       'allBloodInventory', 
@@ -154,11 +153,7 @@ class MockDatabaseService {
     // Clear all hospital-specific data
     this.clearAllHospitalSpecificData();
     
-    // Reinitialize
-    this.initializeEmptyData();
-    this.localStorage.setItem('bloodbank_initialized', 'true');
-    
-    console.log('💾 Database manually cleared and reinitialized');
+    console.log('💾 All data cleared successfully');
     window.dispatchEvent(new CustomEvent('dataRefresh'));
   }
 

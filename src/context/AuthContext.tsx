@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
@@ -68,14 +67,12 @@ const authenticateUser = async (email: string, password: string, userType: UserT
         throw new Error('Your hospital account is pending verification by government health officials');
       }
       
-      // CRITICAL: Ensure complete data isolation by hospital ID
-      console.log(`🔒 Hospital login: ${hospital.name} (ID: ${hospital.id}) - STRICT data isolation enforced`);
-      console.log(`🔒 This hospital will ONLY see data with hospitalId: ${hospital.id}`);
+      console.log(`🔒 Hospital login: ${hospital.name} (ID: ${hospital.id}) - Data isolation enforced`);
       
       return {
         success: true,
         user: {
-          id: hospital.id, // This ensures unique identification by hospital ID
+          id: hospital.id,
           name: hospital.contactPerson,
           email: hospital.email,
           type: 'hospital' as UserType,
@@ -139,9 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const refreshData = () => {
     setRefreshTrigger(prev => prev + 1);
-    console.log('AuthContext - Data refresh triggered for user:', currentUser?.id);
-    
-    // Force refresh of all components that depend on data
+    console.log('🔄 Data refresh triggered for user:', currentUser?.id);
     window.dispatchEvent(new CustomEvent('dataRefresh'));
   };
   
@@ -149,24 +144,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const storedUser = localStorage.getItem('bloodbank_user');
     const storedUserType = localStorage.getItem('bloodbank_user_type');
     
-    console.log('🔍 AuthContext - Checking stored auth:', { storedUser: !!storedUser, storedUserType });
+    console.log('🔍 Checking stored auth:', { storedUser: !!storedUser, storedUserType });
     
     if (storedUser && (storedUserType === 'hospital' || storedUserType === 'government')) {
       try {
         const user = JSON.parse(storedUser);
         setCurrentUser(user);
         setUserType(storedUserType as UserType);
-        console.log('🔒 AuthContext - Auth restored for user ID:', user.id, 'hospital:', user.hospitalName);
+        console.log('✅ Auth restored for user:', user.id, 'hospital:', user.hospitalName);
         
-        // CRITICAL: Verify that this hospital still exists and is verified
         if (storedUserType === 'hospital') {
           mockDatabaseService.getRegisteredHospitals().then(hospitals => {
             const hospital = hospitals.find(h => h.id === user.id);
             if (!hospital || !hospital.verified) {
-              console.log('⚠️ AuthContext - Hospital no longer exists or not verified, logging out');
+              console.log('⚠️ Hospital no longer exists or not verified, logging out');
               logout();
             } else {
-              console.log('✅ AuthContext - Hospital verification confirmed for:', user.hospitalName);
+              console.log('✅ Hospital verification confirmed for:', user.hospitalName);
             }
           });
         }
@@ -175,8 +169,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         localStorage.removeItem('bloodbank_user');
         localStorage.removeItem('bloodbank_user_type');
       }
-    } else {
-      console.log('🚫 AuthContext - No valid stored authentication found');
     }
   }, []);
   
@@ -202,8 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return false;
       }
       
-      console.log('🎉 AuthContext - LOGIN SUCCESS for user ID:', result.user.id, 'hospital:', result.user.hospitalName);
-      console.log('🔒 AuthContext - Data isolation will be enforced for hospital ID:', result.user.id);
+      console.log('🎉 LOGIN SUCCESS for user:', result.user.id, 'hospital:', result.user.hospitalName);
       
       setCurrentUser(result.user);
       setUserType(type);
@@ -321,28 +312,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const logout = () => {
-    console.log('🚪 AuthContext - LOGOUT CALLED for user ID:', currentUser?.id, 'hospital:', currentUser?.hospitalName);
+    console.log('🚪 LOGOUT for user:', currentUser?.id, 'hospital:', currentUser?.hospitalName);
     
     const currentUserType = userType;
     
+    // CRITICAL: Only clear authentication data, NEVER clear hospital/database data
     setCurrentUser(null);
     setUserType(null);
     
-    // CRITICAL: Only clear authentication data, NEVER clear hospital/database data
+    // Only remove authentication tokens, preserve all hospital data
     localStorage.removeItem('bloodbank_user');
     localStorage.removeItem('bloodbank_user_type');
     
-    // DO NOT touch any hospital data or database data
-    console.log('✅ AuthContext - Cleared ONLY authentication data, all hospital data preserved');
+    // DO NOT touch hospital data - it should persist across logout/login
+    console.log('✅ Cleared ONLY authentication data, hospital data preserved');
     
     toast({
       title: "Logged Out Successfully",
       description: "You have been logged out of the system.",
     });
     
-    console.log('🔄 AuthContext - Navigating to appropriate login page');
-    
-    // Navigate to appropriate login page based on user type
     setTimeout(() => {
       if (currentUserType === 'government') {
         window.location.href = '/gov-login';
@@ -363,7 +352,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     refreshData,
   };
   
-  console.log('📊 AuthContext - Current state:', { 
+  console.log('📊 Current state:', { 
     isAuthenticated: !!currentUser && !!userType, 
     userType, 
     currentUserId: currentUser?.id,

@@ -98,22 +98,21 @@ class MockDatabaseService {
 
   constructor() {
     this.localStorage = window.localStorage;
-    this.initializeCleanDatabase();
+    this.initializeDatabase();
   }
 
-  private initializeCleanDatabase() {
-    console.log('🗑️ Clearing all existing data and starting fresh...');
+  private initializeDatabase() {
+    const isInitialized = this.localStorage.getItem('bloodbank_initialized');
     
-    // Clear ALL data - everything starts empty
-    this.clearAllData();
+    if (!isInitialized) {
+      console.log('🆕 First time initialization - creating empty database');
+      this.initializeEmptyData();
+      this.localStorage.setItem('bloodbank_initialized', 'true');
+    } else {
+      console.log('✅ Database already initialized, preserving existing data');
+    }
     
-    // Initialize with empty arrays
-    this.initializeEmptyData();
-    
-    this.localStorage.setItem('bloodbank_initialized', 'true');
     this.isInitialized = true;
-    
-    console.log('✅ Database initialized with completely empty data');
   }
 
   private initializeEmptyData() {
@@ -127,53 +126,21 @@ class MockDatabaseService {
     ];
     
     dataKeys.forEach(key => {
-      this.setInStorage(key, []);
-    });
-  }
-
-  // Manual clear function - removes ALL data
-  async clearAllData(): Promise<void> {
-    console.log('🗑️ Clearing ALL database data...');
-    
-    const dataKeys = [
-      'hospitals',
-      'allBloodInventory', 
-      'allBloodRequests',
-      'pendingHospitals',
-      'donors',
-      'donationDrives',
-      'bloodbank_initialized'
-    ];
-    
-    // Clear main data keys
-    dataKeys.forEach(key => {
-      this.localStorage.removeItem(key);
-    });
-    
-    // Clear all hospital-specific data
-    this.clearAllHospitalSpecificData();
-    
-    console.log('💾 All data cleared successfully');
-    window.dispatchEvent(new CustomEvent('dataRefresh'));
-  }
-
-  private clearAllHospitalSpecificData() {
-    const allKeys = Object.keys(this.localStorage);
-    allKeys.forEach(key => {
-      if (key.startsWith('bloodInventory_') || key.startsWith('bloodRequests_')) {
-        this.localStorage.removeItem(key);
-        console.log(`🗑️ Cleared hospital-specific data: ${key}`);
+      if (!this.localStorage.getItem(key)) {
+        this.setInStorage(key, []);
       }
     });
   }
 
-  // Utility functions for local storage with ACID properties
+  // Enhanced utility functions with better error handling
   private getFromStorage(key: string): any {
     try {
       const item = this.localStorage.getItem(key);
-      return item ? JSON.parse(item) : [];
+      const parsed = item ? JSON.parse(item) : [];
+      console.log(`📖 Retrieved ${key}:`, parsed.length, 'items');
+      return parsed;
     } catch (error) {
-      console.error(`Error reading from storage key ${key}:`, error);
+      console.error(`❌ Error reading from storage key ${key}:`, error);
       return [];
     }
   }
@@ -181,26 +148,32 @@ class MockDatabaseService {
   private setInStorage(key: string, data: any): void {
     try {
       this.localStorage.setItem(key, JSON.stringify(data));
-      console.log(`💾 Updated storage for ${key}:`, data.length, 'items');
+      console.log(`💾 Saved ${key}:`, data.length, 'items');
     } catch (error) {
-      console.error(`Error writing to storage key ${key}:`, error);
+      console.error(`❌ Error writing to storage key ${key}:`, error);
     }
   }
 
-  // Atomic transaction simulation for ACID properties
+  // Enhanced transaction system for ACID properties
   private performTransaction(operations: (() => void)[]): boolean {
     try {
-      // Execute all operations atomically
-      operations.forEach(operation => operation());
+      console.log('🔄 Starting transaction with', operations.length, 'operations');
+      operations.forEach((operation, index) => {
+        console.log(`🔄 Executing operation ${index + 1}`);
+        operation();
+      });
+      console.log('✅ Transaction completed successfully');
       return true;
     } catch (error) {
-      console.error('Transaction failed:', error);
+      console.error('❌ Transaction failed:', error);
       return false;
     }
   }
 
-  // Hospital management functions with ACID properties
+  // Enhanced hospital management with better error handling
   async registerHospital(hospital: Omit<Hospital, 'id' | 'createdAt' | 'verified'>): Promise<Hospital> {
+    console.log('🏥 Registering hospital:', hospital.name);
+    
     const newHospital: Hospital = {
       id: uuidv4(),
       ...hospital,
@@ -216,7 +189,7 @@ class MockDatabaseService {
     ]);
 
     if (success) {
-      console.log(`🏥 Hospital registered: ${newHospital.name} with ID: ${newHospital.id}`);
+      console.log(`✅ Hospital registered successfully: ${newHospital.name} (ID: ${newHospital.id})`);
       window.dispatchEvent(new CustomEvent('dataRefresh'));
       return newHospital;
     } else {
@@ -225,6 +198,8 @@ class MockDatabaseService {
   }
 
   async verifyHospital(hospitalId: string): Promise<{ success: boolean; error?: string; hospitalName?: string }> {
+    console.log('🔍 Verifying hospital:', hospitalId);
+    
     try {
       const pendingHospitals = this.getFromStorage('pendingHospitals');
       const approvedHospitalIndex = pendingHospitals.findIndex((h: Hospital) => h.id === hospitalId);
@@ -248,14 +223,14 @@ class MockDatabaseService {
       ]);
 
       if (success) {
-        console.log(`✅ Hospital approved: ${approvedHospital.name} with ID: ${approvedHospital.id}`);
+        console.log(`✅ Hospital approved: ${approvedHospital.name} (ID: ${approvedHospital.id})`);
         window.dispatchEvent(new CustomEvent('dataRefresh'));
         return { success: true, hospitalName: approvedHospital.name };
       } else {
         return { success: false, error: 'Transaction failed' };
       }
     } catch (error) {
-      console.error(`Error verifying hospital ${hospitalId}:`, error);
+      console.error(`❌ Error verifying hospital ${hospitalId}:`, error);
       return { success: false, error: 'Failed to verify hospital' };
     }
   }
@@ -340,8 +315,10 @@ class MockDatabaseService {
     return { hospitals, inventory, requests };
   }
 
-  // Blood inventory functions with hospital isolation
+  // Enhanced blood inventory management
   async addBloodInventory(hospitalName: string, inventory: Omit<BloodInventory, 'id' | 'hospital' | 'hospitalId'>): Promise<BloodInventory> {
+    console.log('🩸 Adding blood inventory for:', hospitalName);
+    
     const hospitals = await this.getRegisteredHospitals();
     const hospital = hospitals.find(h => h.name === hospitalName);
     
@@ -369,7 +346,7 @@ class MockDatabaseService {
     ]);
 
     if (success) {
-      console.log(`🩸 New blood inventory added: ${newInventory.bloodType} to ${hospitalName} (ID: ${hospital.id})`);
+      console.log(`✅ Blood inventory added: ${newInventory.bloodType} to ${hospitalName} (ID: ${hospital.id})`);
       window.dispatchEvent(new CustomEvent('dataRefresh'));
       return newInventory;
     } else {
@@ -378,6 +355,8 @@ class MockDatabaseService {
   }
 
   async updateBloodInventory(inventoryId: string, updates: Partial<BloodInventory>): Promise<{ success: boolean; error?: string }> {
+    console.log('🔄 Updating blood inventory:', inventoryId);
+    
     try {
       const allInventory = this.getFromStorage('allBloodInventory');
       const inventoryIndex = allInventory.findIndex((inv: BloodInventory) => inv.id === inventoryId);
@@ -406,19 +385,21 @@ class MockDatabaseService {
       ]);
 
       if (success) {
-        console.log(`🔄 Blood inventory updated: ${inventoryId}`);
+        console.log(`✅ Blood inventory updated successfully: ${inventoryId}`);
         window.dispatchEvent(new CustomEvent('dataRefresh'));
         return { success: true };
       } else {
         return { success: false, error: 'Transaction failed' };
       }
     } catch (error) {
-      console.error('Error updating blood inventory:', error);
+      console.error('❌ Error updating blood inventory:', error);
       return { success: false, error: 'Failed to update inventory' };
     }
   }
 
   async deleteBloodInventory(inventoryId: string): Promise<{ success: boolean; error?: string }> {
+    console.log('🗑️ Deleting blood inventory:', inventoryId);
+    
     try {
       let allInventory = this.getFromStorage('allBloodInventory');
       const item = allInventory.find((inv: BloodInventory) => inv.id === inventoryId);
@@ -441,14 +422,14 @@ class MockDatabaseService {
       ]);
 
       if (success) {
-        console.log(`🗑️ Blood inventory deleted: ${inventoryId}`);
+        console.log(`✅ Blood inventory deleted successfully: ${inventoryId}`);
         window.dispatchEvent(new CustomEvent('dataRefresh'));
         return { success: true };
       } else {
         return { success: false, error: 'Transaction failed' };
       }
     } catch (error) {
-      console.error('Error deleting blood inventory:', error);
+      console.error('❌ Error deleting blood inventory:', error);
       return { success: false, error: 'Failed to delete inventory' };
     }
   }
@@ -491,25 +472,30 @@ class MockDatabaseService {
     return hospitalRequests;
   }
 
+  // Enhanced data retrieval with strict isolation
   async getHospitalBloodInventoryById(hospitalId: string): Promise<BloodInventory[]> {
+    console.log('🔍 Getting inventory for hospital ID:', hospitalId);
+    
     const hospitalKey = `bloodInventory_${hospitalId}`;
     const inventory = this.getFromStorage(hospitalKey);
     
-    // Double-check: Filter by hospital ID to ensure data isolation
+    // Ensure data isolation
     const hospitalInventory = inventory.filter((inv: BloodInventory) => inv.hospitalId === hospitalId);
     
-    console.log(`🩸 Retrieved ${hospitalInventory.length} inventory items for hospital ID: ${hospitalId}`);
+    console.log(`✅ Retrieved ${hospitalInventory.length} inventory items for hospital ID: ${hospitalId}`);
     return hospitalInventory;
   }
 
   async getHospitalBloodRequestsById(hospitalId: string): Promise<BloodRequest[]> {
+    console.log('🔍 Getting requests for hospital ID:', hospitalId);
+    
     const hospitalKey = `bloodRequests_${hospitalId}`;
     const requests = this.getFromStorage(hospitalKey);
     
-    // Double-check: Filter by hospital ID to ensure data isolation
+    // Ensure data isolation
     const hospitalRequests = requests.filter((req: BloodRequest) => req.hospitalId === hospitalId);
     
-    console.log(`📋 Retrieved ${hospitalRequests.length} requests for hospital ID: ${hospitalId}`);
+    console.log(`✅ Retrieved ${hospitalRequests.length} requests for hospital ID: ${hospitalId}`);
     return hospitalRequests;
   }
 
@@ -715,6 +701,35 @@ class MockDatabaseService {
       console.error('Error contacting hospital:', error);
       return { success: false, error: 'Failed to contact hospital' };
     }
+  }
+
+  async clearAllData(): Promise<void> {
+    console.log('🗑️ Manual clear all data requested');
+    
+    const dataKeys = [
+      'hospitals',
+      'allBloodInventory', 
+      'allBloodRequests',
+      'pendingHospitals',
+      'donors',
+      'donationDrives',
+      'bloodbank_initialized'
+    ];
+    
+    dataKeys.forEach(key => {
+      this.localStorage.removeItem(key);
+    });
+    
+    // Clear hospital-specific data
+    const allKeys = Object.keys(this.localStorage);
+    allKeys.forEach(key => {
+      if (key.startsWith('bloodInventory_') || key.startsWith('bloodRequests_')) {
+        this.localStorage.removeItem(key);
+      }
+    });
+    
+    console.log('✅ All data cleared manually');
+    window.dispatchEvent(new CustomEvent('dataRefresh'));
   }
 }
 

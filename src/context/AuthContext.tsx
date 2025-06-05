@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
@@ -113,7 +114,9 @@ const registerHospital = async (userData: any) => {
       email: userData.email,
       contactPerson: userData.contactPerson,
       registrationId: userData.registrationId,
-      address: userData.address || ''
+      address: userData.address || '',
+      phone: userData.phoneNumber || '',
+      website: userData.website || ''
     });
     
     console.log('Hospital registration successful:', userData.hospitalName);

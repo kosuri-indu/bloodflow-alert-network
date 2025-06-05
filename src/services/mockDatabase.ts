@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 
 // Define data structures
@@ -705,7 +704,7 @@ class MockDatabaseService {
   }
 
   async clearAllData(): Promise<void> {
-    console.log('🗑️ Clearing all data - fresh start requested');
+    console.log('🗑️ Manual clear all data requested');
     
     const dataKeys = [
       'hospitals',
@@ -733,14 +732,13 @@ class MockDatabaseService {
     this.initializeEmptyData();
     this.localStorage.setItem('bloodbank_initialized', 'true');
     
-    console.log('✅ All data cleared - database reset to fresh state');
+    console.log('✅ All data cleared manually');
     window.dispatchEvent(new CustomEvent('dataRefresh'));
   }
 }
 
-// Immediately clear all data on service creation
+// DO NOT automatically clear data - only initialize the service
 const mockDatabaseService = new MockDatabaseService();
-mockDatabaseService.clearAllData();
 
 export default mockDatabaseService;
 export type { Hospital, BloodInventory, BloodRequest, AiMatch, Donor, DonationDrive };

@@ -27,9 +27,8 @@ const queryClient = new QueryClient({
 const HospitalProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, userType } = useAuth();
   
-  // Only hospitals are allowed to access hospital routes
   if (!isAuthenticated || userType !== 'hospital') {
-    return <Navigate to="/register" />;
+    return <Navigate to="/register" replace />;
   }
   
   return <>{children}</>;
@@ -39,9 +38,8 @@ const HospitalProtectedRoute = ({ children }: { children: React.ReactNode }) => 
 const GovernmentProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, userType } = useAuth();
   
-  // Only government officials are allowed to access government routes
   if (!isAuthenticated || userType !== 'government') {
-    return <Navigate to="/gov-login" />;
+    return <Navigate to="/gov-login" replace />;
   }
   
   return <>{children}</>;
@@ -50,7 +48,7 @@ const GovernmentProtectedRoute = ({ children }: { children: React.ReactNode }) =
 // The Routes component that uses AuthProvider
 const AppRoutes = () => (
   <AuthProvider>
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen w-full">
       <Navbar />
       <main className="flex-grow">
         <Routes>

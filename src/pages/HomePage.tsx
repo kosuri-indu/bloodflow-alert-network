@@ -1,3 +1,4 @@
+
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from "../context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -15,8 +16,8 @@ const HomePage = () => {
   const { data: bloodInventory, isLoading: inventoryLoading, refetch: refetchInventory } = useQuery({
     queryKey: ['bloodInventory'],
     queryFn: mockDatabaseService.getBloodInventoryDetails,
-    refetchInterval: 5000, // Refetch every 5 seconds
-    staleTime: 0, // Always consider data stale for fresh updates
+    refetchInterval: 5000,
+    staleTime: 0,
   });
 
   // Fetch hospital data with automatic refetching
@@ -38,7 +39,6 @@ const HomePage = () => {
   // Listen for data refresh events
   useEffect(() => {
     const handleDataRefresh = () => {
-      console.log('HomePage - Received data refresh event, refetching all data');
       refetchInventory();
       refetchHospitals();
       refetchRequests();
@@ -79,12 +79,12 @@ const HomePage = () => {
         {/* Hero Section */}
         <div className="text-center mb-16">
           <div className="flex justify-center mb-4">
-            <Brain className="h-16 w-16 text-purple-600" />
+            <Brain className="h-16 w-16 text-purple-600 animate-pulse" />
           </div>
           <h1 className="text-5xl font-bold text-red-600 mb-6">
             Blood<span className="text-purple-600">Bank</span>AI
           </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8 leading-relaxed">
             {isAuthenticated ? (
               userType === 'hospital' ? 
                 "Manage your blood inventory and connect with partner hospitals using AI-powered matching." :
@@ -98,24 +98,27 @@ const HomePage = () => {
             {isAuthenticated ? (
               <Button
                 onClick={() => navigate(userType === 'hospital' ? '/dashboard' : '/government-dashboard')}
-                className="bg-red-600 hover:bg-red-700 px-6 py-3 text-lg"
+                className="bg-red-600 hover:bg-red-700 px-8 py-4 text-lg transition-all duration-200 hover:scale-105 shadow-lg"
               >
                 Go to {userType === 'hospital' ? 'Hospital' : 'Government'} Dashboard
+                <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             ) : (
               <>
                 <Button
                   onClick={() => navigate('/register')}
-                  className="bg-red-600 hover:bg-red-700 px-6 py-3 text-lg"
+                  className="bg-red-600 hover:bg-red-700 px-8 py-4 text-lg transition-all duration-200 hover:scale-105 shadow-lg"
                 >
                   Hospital Login/Register
+                  <Hospital className="ml-2 h-5 w-5" />
                 </Button>
                 <Button
                   onClick={() => navigate('/gov-login')}
                   variant="outline"
-                  className="border-blue-600 text-blue-600 hover:bg-blue-50 px-6 py-3 text-lg"
+                  className="border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-4 text-lg transition-all duration-200 hover:scale-105 shadow-lg"
                 >
                   Government Portal
+                  <Shield className="ml-2 h-5 w-5" />
                 </Button>
               </>
             )}
@@ -123,28 +126,28 @@ const HomePage = () => {
 
           {/* Real-time Stats Section */}
           <div className="grid md:grid-cols-4 gap-6 mb-16">
-            <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-300">
+            <Card className="p-6 text-center hover:shadow-xl transition-all duration-300 hover:scale-105 border-l-4 border-l-red-500">
               <Hospital className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-semibold mb-2">{hospitalsLoading ? '...' : totalHospitals}</h3>
-              <p className="text-gray-600">Registered Hospitals</p>
+              <h3 className="text-3xl font-bold mb-2 text-gray-800">{hospitalsLoading ? '...' : totalHospitals}</h3>
+              <p className="text-gray-600 font-medium">Registered Hospitals</p>
             </Card>
 
-            <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-300">
+            <Card className="p-6 text-center hover:shadow-xl transition-all duration-300 hover:scale-105 border-l-4 border-l-red-500">
               <DropletIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-semibold mb-2">{inventoryLoading ? '...' : totalUnits}</h3>
-              <p className="text-gray-600">Blood Units Available</p>
+              <h3 className="text-3xl font-bold mb-2 text-gray-800">{inventoryLoading ? '...' : totalUnits}</h3>
+              <p className="text-gray-600 font-medium">Blood Units Available</p>
             </Card>
 
-            <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-300">
+            <Card className="p-6 text-center hover:shadow-xl transition-all duration-300 hover:scale-105 border-l-4 border-l-orange-500">
               <AlertTriangle className="w-12 h-12 text-orange-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-semibold mb-2">{requestsLoading ? '...' : criticalRequests}</h3>
-              <p className="text-gray-600">Critical Requests</p>
+              <h3 className="text-3xl font-bold mb-2 text-gray-800">{requestsLoading ? '...' : criticalRequests}</h3>
+              <p className="text-gray-600 font-medium">Critical Requests</p>
             </Card>
 
-            <Card className="p-6 text-center hover:shadow-lg transition-shadow duration-300">
+            <Card className="p-6 text-center hover:shadow-xl transition-all duration-300 hover:scale-105 border-l-4 border-l-purple-500">
               <Database className="w-12 h-12 text-purple-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-semibold mb-2">{requestsLoading ? '...' : pendingRequests}</h3>
-              <p className="text-gray-600">Pending Requests</p>
+              <h3 className="text-3xl font-bold mb-2 text-gray-800">{requestsLoading ? '...' : pendingRequests}</h3>
+              <p className="text-gray-600 font-medium">Pending Requests</p>
             </Card>
           </div>
         </div>
@@ -155,16 +158,16 @@ const HomePage = () => {
             <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">
               Real-time Blood Availability
             </h2>
-            <Card className="p-8">
+            <Card className="p-8 hover:shadow-xl transition-shadow duration-300">
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
                 {Object.entries(bloodTypeStats).map(([bloodType, units]) => (
                   <div 
                     key={bloodType}
-                    className={`${getBloodStatusColor(units)} rounded-lg p-4 text-center border-2 hover:scale-105 transition-transform duration-300`}
+                    className={`${getBloodStatusColor(units)} rounded-lg p-4 text-center border-2 hover:scale-105 transition-transform duration-300 shadow-sm`}
                   >
                     <div className="text-2xl font-bold mb-1">{bloodType}</div>
-                    <div className="text-sm mb-2">{getBloodStatus(units)}</div>
-                    <div className="font-medium">{units} units</div>
+                    <div className="text-sm mb-2 font-medium">{getBloodStatus(units)}</div>
+                    <div className="font-semibold">{units} units</div>
                   </div>
                 ))}
               </div>
@@ -180,7 +183,7 @@ const HomePage = () => {
         {/* When no data is available */}
         {!inventoryLoading && Object.keys(bloodTypeStats).length === 0 && (
           <div className="mb-12">
-            <Card className="p-8 text-center">
+            <Card className="p-8 text-center hover:shadow-xl transition-shadow duration-300">
               <div className="text-gray-500 mb-4">
                 <Database className="w-16 h-16 mx-auto mb-4 opacity-50" />
                 <h3 className="text-xl font-semibold mb-2">No Blood Inventory Data</h3>
@@ -195,35 +198,35 @@ const HomePage = () => {
           <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">
             Our Features
           </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
-              <div className="rounded-full bg-purple-100 p-3 w-14 h-14 flex items-center justify-center mb-4">
-                <Brain className="h-6 w-6 text-purple-600" />
+          <div className="grid md:grid-cols-3 gap-8">
+            <Card className="p-8 hover:shadow-xl transition-all duration-300 hover:scale-105 border-l-4 border-l-purple-500">
+              <div className="rounded-full bg-purple-100 p-4 w-16 h-16 flex items-center justify-center mb-6">
+                <Brain className="h-8 w-8 text-purple-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-3 text-red-600">AI-Powered Matching</h3>
-              <p className="text-gray-600">
+              <h3 className="text-xl font-semibold mb-4 text-red-600">AI-Powered Matching</h3>
+              <p className="text-gray-600 leading-relaxed">
                 Our advanced AI algorithm matches blood across hospital networks based on blood type compatibility,
                 Rh factor, special attributes, and urgency to ensure timely and effective transfusions.
               </p>
             </Card>
 
-            <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
-              <div className="rounded-full bg-red-100 p-3 w-14 h-14 flex items-center justify-center mb-4">
-                <ChartBar className="h-6 w-6 text-red-600" />
+            <Card className="p-8 hover:shadow-xl transition-all duration-300 hover:scale-105 border-l-4 border-l-red-500">
+              <div className="rounded-full bg-red-100 p-4 w-16 h-16 flex items-center justify-center mb-6">
+                <ChartBar className="h-8 w-8 text-red-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-3 text-red-600">Real-time Inventory</h3>
-              <p className="text-gray-600">
+              <h3 className="text-xl font-semibold mb-4 text-red-600">Real-time Inventory</h3>
+              <p className="text-gray-600 leading-relaxed">
                 Get instant visibility into your blood inventory and track expiration dates. Connect with nearby hospitals
                 to fulfill urgent blood requirements.
               </p>
             </Card>
 
-            <Card className="p-6 hover:shadow-lg transition-shadow duration-300">
-              <div className="rounded-full bg-blue-100 p-3 w-14 h-14 flex items-center justify-center mb-4">
-                <Shield className="h-6 w-6 text-blue-600" />
+            <Card className="p-8 hover:shadow-xl transition-all duration-300 hover:scale-105 border-l-4 border-l-blue-500">
+              <div className="rounded-full bg-blue-100 p-4 w-16 h-16 flex items-center justify-center mb-6">
+                <Shield className="h-8 w-8 text-blue-600" />
               </div>
-              <h3 className="text-xl font-semibold mb-3 text-red-600">Secure & Verified</h3>
-              <p className="text-gray-600">
+              <h3 className="text-xl font-semibold mb-4 text-red-600">Secure & Verified</h3>
+              <p className="text-gray-600 leading-relaxed">
                 All hospitals undergo government verification. Secure data handling ensures patient privacy while
                 maintaining efficient blood distribution across the network.
               </p>
@@ -232,32 +235,32 @@ const HomePage = () => {
         </div>
 
         {/* How It Works Section */}
-        <div className="bg-gradient-to-r from-red-50 to-purple-50 p-10 rounded-xl mb-12">
+        <div className="bg-gradient-to-r from-red-50 to-purple-50 p-12 rounded-2xl mb-12 shadow-lg">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-2xl font-bold mb-4">How BloodBankAI Works</h2>
+            <h2 className="text-3xl font-bold mb-8 text-gray-800">How BloodBankAI Works</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="flex flex-col items-center">
-                <div className="rounded-full bg-white p-4 mb-3 shadow-md">
-                  <DropletIcon className="h-8 w-8 text-red-600" />
+                <div className="rounded-full bg-white p-6 mb-4 shadow-lg hover:scale-110 transition-transform duration-300">
+                  <DropletIcon className="h-10 w-10 text-red-600" />
                 </div>
-                <h3 className="font-medium mb-1">Record Inventory</h3>
-                <p className="text-sm text-gray-600">Add your blood inventory with detailed information</p>
+                <h3 className="font-semibold mb-2 text-lg">Record Inventory</h3>
+                <p className="text-gray-600">Add your blood inventory with detailed information</p>
               </div>
               
               <div className="flex flex-col items-center">
-                <div className="rounded-full bg-white p-4 mb-3 shadow-md">
-                  <Brain className="h-8 w-8 text-purple-600" />
+                <div className="rounded-full bg-white p-6 mb-4 shadow-lg hover:scale-110 transition-transform duration-300">
+                  <Brain className="h-10 w-10 text-purple-600" />
                 </div>
-                <h3 className="font-medium mb-1">AI Processing</h3>
-                <p className="text-sm text-gray-600">Our AI finds the best matches based on multiple factors</p>
+                <h3 className="font-semibold mb-2 text-lg">AI Processing</h3>
+                <p className="text-gray-600">Our AI finds the best matches based on multiple factors</p>
               </div>
               
               <div className="flex flex-col items-center">
-                <div className="rounded-full bg-white p-4 mb-3 shadow-md">
-                  <Hospital className="h-8 w-8 text-blue-600" />
+                <div className="rounded-full bg-white p-6 mb-4 shadow-lg hover:scale-110 transition-transform duration-300">
+                  <Hospital className="h-10 w-10 text-blue-600" />
                 </div>
-                <h3 className="font-medium mb-1">Hospital Connection</h3>
-                <p className="text-sm text-gray-600">Connect with matched hospitals to fulfill blood requests</p>
+                <h3 className="font-semibold mb-2 text-lg">Hospital Connection</h3>
+                <p className="text-gray-600">Connect with matched hospitals to fulfill blood requests</p>
               </div>
             </div>
           </div>
@@ -268,10 +271,10 @@ const HomePage = () => {
           {!isAuthenticated && (
             <Button 
               onClick={() => navigate('/register')} 
-              className="bg-purple-600 hover:bg-purple-700 text-lg px-8 py-6 group"
+              className="bg-gradient-to-r from-purple-600 to-red-600 hover:from-purple-700 hover:to-red-700 text-white text-lg px-12 py-6 rounded-full shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group"
             >
               Join BloodBankAI Today
-              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              <ArrowRight className="ml-3 h-6 w-6 group-hover:translate-x-1 transition-transform" />
             </Button>
           )}
         </div>

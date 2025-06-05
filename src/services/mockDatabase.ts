@@ -7,6 +7,9 @@ export interface Hospital {
   address: string;
   phone: string;
   website: string;
+  contactPerson: string;
+  registrationId: string;
+  verified: boolean;
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -70,6 +73,9 @@ const initialHospitals: Hospital[] = [
     address: '123 Main St, Anytown',
     phone: '555-1234',
     website: 'www.citygeneral.com',
+    contactPerson: 'Dr. John Smith',
+    registrationId: 'REG001',
+    verified: true,
     createdAt: new Date(),
   },
   {
@@ -79,6 +85,9 @@ const initialHospitals: Hospital[] = [
     address: '456 Oak Ave, Anytown',
     phone: '555-5678',
     website: 'www.regionalmedical.com',
+    contactPerson: 'Dr. Jane Doe',
+    registrationId: 'REG002',
+    verified: true,
     createdAt: new Date(),
   },
   {
@@ -88,6 +97,9 @@ const initialHospitals: Hospital[] = [
     address: '789 Pine Ln, Anytown',
     phone: '555-9012',
     website: 'www.universityhospital.com',
+    contactPerson: 'Dr. Mike Johnson',
+    registrationId: 'REG003',
+    verified: true,
     createdAt: new Date(),
   }
 ];
@@ -211,10 +223,11 @@ class MockDatabaseService {
     return storedData ? JSON.parse(storedData) : null;
   }
 
-  async registerHospital(hospitalData: Omit<Hospital, 'id' | 'createdAt'>): Promise<Hospital> {
+  async registerHospital(hospitalData: Omit<Hospital, 'id' | 'createdAt' | 'verified'>): Promise<Hospital> {
     const newHospital: Hospital = {
       id: uuidv4(),
       ...hospitalData,
+      verified: false,
       createdAt: new Date(),
     };
 
@@ -232,6 +245,62 @@ class MockDatabaseService {
   async getHospitalById(hospitalId: string): Promise<Hospital | undefined> {
     const hospitals = this.getStoredData('hospitals') as Hospital[];
     return hospitals.find(hospital => hospital.id === hospitalId);
+  }
+
+  async getPendingHospitals(): Promise<Hospital[]> {
+    const hospitals = this.getStoredData('hospitals') as Hospital[] || [];
+    return hospitals.filter(hospital => !hospital.verified);
+  }
+
+  async getAllHospitalsWithData(): Promise<{ hospitals: Hospital[], inventory: BloodInventory[], requests: BloodRequest[] }> {
+    const hospitals = this.getStoredData('hospitals') as Hospital[] || [];
+    const inventory = this.getStoredData('inventory') as BloodInventory[] || [];
+    const requests = this.getStoredData('bloodRequests') as BloodRequest[] || [];
+    
+    return { hospitals, inventory, requests };
+  }
+
+  async getAllData(): Promise<{ hospitals: Hospital[], inventory: BloodInventory[], requests: BloodRequest[] }> {
+    return this.getAllHospitalsWithData();
+  }
+
+  async verifyHospital(hospitalId: string): Promise<{ success: boolean; error?: string; hospitalName?: string }> {
+    try {
+      const hospitals = this.getStoredData('hospitals') as Hospital[];
+      const hospitalIndex = hospitals.findIndex(h => h.id === hospitalId);
+      
+      if (hospitalIndex === -1) {
+        return { success: false, error: 'Hospital not found' };
+      }
+      
+      hospitals[hospitalIndex].verified = true;
+      hospitals[hospitalIndex].updatedAt = new Date();
+      
+      this.localStorage.setItem('bloodbank_hospitals', JSON.stringify(hospitals));
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+      
+      return { success: true, hospitalName: hospitals[hospitalIndex].name };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async deleteHospital(hospitalId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const hospitals = this.getStoredData('hospitals') as Hospital[];
+      const filteredHospitals = hospitals.filter(h => h.id !== hospitalId);
+      
+      if (filteredHospitals.length === hospitals.length) {
+        return { success: false, error: 'Hospital not found' };
+      }
+      
+      this.localStorage.setItem('bloodbank_hospitals', JSON.stringify(filteredHospitals));
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 
   async addBloodInventory(hospitalName: string, inventoryData: Omit<BloodInventory, 'id' | 'hospitalId' | 'hospital' | 'createdAt' | 'updatedAt'>): Promise<BloodInventory> {
@@ -309,7 +378,37 @@ class MockDatabaseService {
     }
   }
 
-  async createBloodRequest(requestData: Omit<BloodRequest, 'id' | 'hospitalId' | 'matchPercentage' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean; error?: string }> {
+  async getHospitalBloodRequests(hospitalName: string): Promise<BloodRequest[]> {
+    const requests = this.getStoredData('bloodRequests') as BloodRequest[];
+    return requests.filter(request => request.hospital === hospitalName);
+  }
+
+  async addBloodRequest(hospitalName: string, requestData: Omit<BloodRequest, 'id' | 'hospitalId' | 'hospital' | 'matchPercentage' | 'createdAt' | 'updatedAt'>): Promise<BloodRequest> {
+    const hospitals = this.getStoredData('hospitals') as Hospital[];
+    const hospital = hospitals.find(h => h.name === hospitalName);
+
+    if (!hospital) {
+      throw new Error('Hospital not found');
+    }
+
+    const newRequest: BloodRequest = {
+      id: uuidv4(),
+      hospitalId: hospital.id,
+      hospital: hospital.name,
+      ...requestData,
+      matchPercentage: 0,
+      createdAt: new Date(),
+    };
+
+    const bloodRequests = this.getStoredData('bloodRequests') as BloodRequest[] || [];
+    bloodRequests.push(newRequest);
+    this.localStorage.setItem('bloodbank_bloodRequests', JSON.stringify(bloodRequests));
+    window.dispatchEvent(new CustomEvent('dataRefresh'));
+
+    return newRequest;
+  }
+
+  async createBloodRequest(requestData: Omit<BloodRequest, 'id' | 'hospitalId' | 'matchPercentage' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean; error?: string; request?: BloodRequest }> {
     try {
       const hospitals = this.getStoredData('hospitals') as Hospital[];
       const hospital = hospitals.find(h => h.name === requestData.hospital);
@@ -331,7 +430,7 @@ class MockDatabaseService {
       this.localStorage.setItem('bloodbank_bloodRequests', JSON.stringify(bloodRequests));
       window.dispatchEvent(new CustomEvent('dataRefresh'));
 
-      return { success: true };
+      return { success: true, request: newRequest };
     } catch (error) {
       return { success: false, error: error.message };
     }

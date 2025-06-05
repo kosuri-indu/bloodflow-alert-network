@@ -222,7 +222,7 @@ const InventoryManager: React.FC = () => {
     setEditingItem(item);
     setFormData({
       bloodType: item.bloodType,
-      rhFactor: item.rhFactor,
+      rhFactor: item.rhFactor as 'positive' | 'negative',
       units: item.units,
       expirationDate: format(new Date(item.expirationDate), 'yyyy-MM-dd'),
       donorAge: item.donorAge,

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -288,7 +287,7 @@ const InventoryManager: React.FC = () => {
                 </div>
                 <div>
                   <Label htmlFor="rhFactor">Rh Factor</Label>
-                  <Select value={formData.rhFactor} onValueChange={(value) => setFormData({...formData, rhFactor: value})}>
+                  <Select value={formData.rhFactor} onValueChange={(value) => setFormData({...formData, rhFactor: value as 'positive' | 'negative'})}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -410,7 +409,7 @@ const InventoryManager: React.FC = () => {
               </div>
               <div>
                 <Label htmlFor="rhFactor">Rh Factor</Label>
-                <Select value={formData.rhFactor} onValueChange={(value) => setFormData({...formData, rhFactor: value})}>
+                <Select value={formData.rhFactor} onValueChange={(value) => setFormData({...formData, rhFactor: value as 'positive' | 'negative'})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

@@ -14,7 +14,9 @@ import {
   LogOut,
   User,
   RefreshCw,
-  Clipboard
+  Clipboard,
+  Edit,
+  Trash2
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from "../context/AuthContext";
@@ -26,27 +28,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import mockDatabaseService, { BloodRequest, BloodInventory } from "@/services/mockDatabase";
 import { useDashboardStats } from "../hooks/useDashboardStats";
+import InventoryManager from "../components/hospital/InventoryManager";
+import { useNotifications } from "../hooks/useNotifications";
 
 const DashboardPage = () => {
   const [bloodInventory, setBloodInventory] = useState<BloodInventory[]>([]);
   const [bloodRequests, setBloodRequests] = useState<BloodRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingRequest, setEditingRequest] = useState<BloodRequest | null>(null);
+  const [isEditRequestDialogOpen, setIsEditRequestDialogOpen] = useState(false);
   const { toast } = useToast();
   const { currentUser, logout } = useAuth();
-  const [isAddingInventory, setIsAddingInventory] = useState(false);
   const [isCreatingRequest, setIsCreatingRequest] = useState(false);
 
   const { stats, isLoading: statsLoading, refreshStats } = useDashboardStats();
-
-  const [newInventoryForm, setNewInventoryForm] = useState({
-    bloodType: "",
-    rhFactor: "positive",
-    units: 1,
-    processedDate: format(new Date(), "yyyy-MM-dd"),
-    expirationDate: format(new Date(new Date().setDate(new Date().getDate() + 42)), "yyyy-MM-dd"),
-    donorAge: 30,
-    specialAttributes: [] as string[]
-  });
+  const { notifications, unreadCount, markAllAsRead } = useNotifications(currentUser?.hospitalName);
 
   const [newRequestForm, setNewRequestForm] = useState({
     bloodType: "",
@@ -78,15 +74,6 @@ const DashboardPage = () => {
     }
   };
 
-  const handleSpecialAttributesChange = (attribute: string, checked: boolean) => {
-    setNewInventoryForm(prev => ({
-      ...prev,
-      specialAttributes: checked 
-        ? [...prev.specialAttributes, attribute]
-        : prev.specialAttributes.filter(attr => attr !== attribute)
-    }));
-  };
-
   const refreshAllData = async () => {
     if (!currentUser?.id || !currentUser?.hospitalName) {
       console.log('🚫 No current user available - clearing data');
@@ -100,13 +87,11 @@ const DashboardPage = () => {
     try {
       console.log('🔄 Refreshing data for hospital:', currentUser.hospitalName, 'ID:', currentUser.id);
       
-      // CRITICAL: Use hospital ID for strict data isolation
       const [inventoryDetails, requests] = await Promise.all([
         mockDatabaseService.getHospitalBloodInventoryById(currentUser.id),
         mockDatabaseService.getHospitalBloodRequestsById(currentUser.id)
       ]);
       
-      // Double-check data isolation
       const verifiedInventory = inventoryDetails.filter(item => item.hospitalId === currentUser.id);
       const verifiedRequests = requests.filter(req => req.hospitalId === currentUser.id);
       
@@ -136,11 +121,9 @@ const DashboardPage = () => {
     }
   };
 
-  // CRITICAL: Clear data immediately when user changes
   useEffect(() => {
     console.log('👤 User changed in DashboardPage - clearing and fetching for:', currentUser?.hospitalName, 'ID:', currentUser?.id);
     
-    // Immediately clear data to prevent showing old data
     setBloodInventory([]);
     setBloodRequests([]);
     
@@ -180,58 +163,6 @@ const DashboardPage = () => {
 
   const formatBloodType = (bloodType: string, rhFactor: string) => {
     return `${bloodType} ${rhFactor === 'positive' ? `Rh+ (${bloodType}+)` : `Rh- (${bloodType}-)`}`;
-  };
-
-  const handleAddInventory = async () => {
-    try {
-      if (!currentUser?.hospitalName || !currentUser?.id) {
-        toast({
-          title: "Error",
-          description: "No hospital information available.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!newInventoryForm.bloodType || newInventoryForm.units < 1) {
-        toast({
-          title: "Validation Error",
-          description: "Please fill all required fields correctly.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log('➕ Adding inventory for hospital:', currentUser.hospitalName, 'ID:', currentUser.id);
-
-      const newInventory = {
-        bloodType: newInventoryForm.bloodType,
-        rhFactor: newInventoryForm.rhFactor as 'positive' | 'negative',
-        units: newInventoryForm.units,
-        processedDate: new Date(newInventoryForm.processedDate),
-        expirationDate: new Date(newInventoryForm.expirationDate),
-        donorAge: Number(newInventoryForm.donorAge),
-        specialAttributes: newInventoryForm.specialAttributes
-      };
-
-      await mockDatabaseService.addBloodInventory(currentUser.hospitalName, newInventory);
-      await refreshAllData();
-
-      toast({
-        title: "Inventory Added",
-        description: `${newInventoryForm.units} units of ${formatBloodType(newInventoryForm.bloodType, newInventoryForm.rhFactor)} added to ${currentUser.hospitalName} inventory.`,
-      });
-
-      // ... keep existing code (reset form and close dialog)
-      setIsAddingInventory(false);
-    } catch (error) {
-      console.error("Error adding inventory:", error);
-      toast({
-        title: "Error",
-        description: "Failed to add inventory. Please try again.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleCreateBloodRequest = async () => {
@@ -278,7 +209,16 @@ const DashboardPage = () => {
           description: `Request created for ${currentUser.hospitalName} and sent to Government Health Authority.`,
         });
 
-        // ... keep existing code (reset form and close dialog)
+        setNewRequestForm({
+          bloodType: "",
+          units: 1,
+          urgency: "routine",
+          patientAge: 30,
+          patientWeight: 70,
+          medicalCondition: "",
+          neededBy: format(new Date(new Date().setHours(new Date().getHours() + 24)), "yyyy-MM-dd'T'HH:mm"),
+          specialRequirements: []
+        });
         setIsCreatingRequest(false);
       } else {
         toast({
@@ -297,7 +237,93 @@ const DashboardPage = () => {
     }
   };
 
-  // Show login prompt if no user
+  const handleEditRequest = async () => {
+    try {
+      if (!editingRequest) return;
+
+      const updatedRequest = {
+        bloodType: `${newRequestForm.bloodType} ${newRequestForm.bloodType === 'O' ? 'Rh-' : 'Rh+'} (${newRequestForm.bloodType}${newRequestForm.bloodType === 'O' ? '-' : '+'})`,
+        units: newRequestForm.units,
+        urgency: newRequestForm.urgency as 'routine' | 'urgent' | 'critical',
+        patientAge: newRequestForm.patientAge,
+        patientWeight: newRequestForm.patientWeight,
+        medicalCondition: newRequestForm.medicalCondition,
+        neededBy: new Date(newRequestForm.neededBy),
+        specialRequirements: newRequestForm.specialRequirements
+      };
+
+      const result = await mockDatabaseService.updateBloodRequest(editingRequest.id, updatedRequest);
+      
+      if (result.success) {
+        await refreshAllData();
+        toast({
+          title: "Request Updated",
+          description: "Blood request updated successfully.",
+        });
+        setIsEditRequestDialogOpen(false);
+        setEditingRequest(null);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update blood request.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error updating request:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update blood request.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteRequest = async (requestId: string) => {
+    try {
+      const result = await mockDatabaseService.deleteBloodRequest(requestId);
+      
+      if (result.success) {
+        await refreshAllData();
+        toast({
+          title: "Request Deleted",
+          description: "Blood request deleted successfully.",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete blood request.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting request:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete blood request.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openEditRequestDialog = (request: BloodRequest) => {
+    const bloodTypeMatch = request.bloodType.match(/^([AB]?O?)[\s\w\+\-\(\)]*$/);
+    const bloodType = bloodTypeMatch ? bloodTypeMatch[1] : 'O';
+    
+    setEditingRequest(request);
+    setNewRequestForm({
+      bloodType: bloodType,
+      units: request.units,
+      urgency: request.urgency,
+      patientAge: request.patientAge,
+      patientWeight: request.patientWeight,
+      medicalCondition: request.medicalCondition,
+      neededBy: format(new Date(request.neededBy), "yyyy-MM-dd'T'HH:mm"),
+      specialRequirements: request.specialRequirements || []
+    });
+    setIsEditRequestDialogOpen(true);
+  };
+
   if (!currentUser?.hospitalName) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -337,6 +363,24 @@ const DashboardPage = () => {
               </div>
             </div>
             
+            {/* System Notifications */}
+            {unreadCount > 0 && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-blue-600" />
+                <span className="text-sm text-blue-700 font-medium">
+                  {unreadCount} new notification{unreadCount > 1 ? 's' : ''}
+                </span>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={markAllAsRead}
+                  className="ml-2 h-6 px-2 text-xs"
+                >
+                  Mark as read
+                </Button>
+              </div>
+            )}
+            
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
@@ -347,10 +391,6 @@ const DashboardPage = () => {
               >
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                 Refresh
-              </Button>
-              
-              <Button className="bg-purple-600 hover:bg-purple-700" onClick={() => setIsAddingInventory(true)}>
-                <Plus className="h-4 w-4 mr-1" /> Add Inventory
               </Button>
               
               <Button className="bg-red-600 hover:bg-red-700" onClick={() => setIsCreatingRequest(true)}>
@@ -443,95 +483,7 @@ const DashboardPage = () => {
               </TabsList>
 
               <TabsContent value="inventory">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-xl flex items-center justify-between">
-                      <span>Blood Inventory - {currentUser.hospitalName}</span>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex items-center gap-1"
-                        onClick={() => setIsAddingInventory(true)}
-                      >
-                        <Plus className="h-4 w-4" /> Add Inventory
-                      </Button>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-3">Blood Type</th>
-                            <th className="text-left py-3">Units</th>
-                            <th className="text-left py-3">Processed</th>
-                            <th className="text-left py-3">Expiration</th>
-                            <th className="text-left py-3">Special Attributes</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                          {bloodInventory.map((item, idx) => {
-                            const expiryStatus = getExpiryStatus(item.expirationDate);
-                            
-                            return (
-                              <tr key={idx} className="hover:bg-gray-50">
-                                <td className="py-3">
-                                  <div className="flex items-center">
-                                    <DropletIcon className="h-4 w-4 text-red-600 mr-2" />
-                                    <span className="font-medium">
-                                      {formatBloodType(item.bloodType, item.rhFactor)}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="py-3">
-                                  <div className={`font-medium ${
-                                    item.units < 10 ? 'text-red-600' : 
-                                    item.units < 30 ? 'text-amber-600' : 
-                                    'text-gray-900'
-                                  }`}>
-                                    {item.units} units
-                                  </div>
-                                </td>
-                                <td className="py-3">
-                                  {format(new Date(item.processedDate), 'MMM d, yyyy')}
-                                </td>
-                                <td className="py-3">
-                                  <div className="flex items-center">
-                                    <span className={`${expiryStatus.color} mr-1`}>
-                                      <Clock className="h-4 w-4 inline mr-1" />
-                                      {expiryStatus.message}
-                                    </span>
-                                  </div>
-                                </td>
-                                <td className="py-3">
-                                  {item.specialAttributes && item.specialAttributes.length > 0 ? (
-                                    <div className="flex flex-wrap gap-1">
-                                      {item.specialAttributes.map((attr, i) => (
-                                        <Badge key={i} variant="outline" className="capitalize">
-                                          {attr.replace('-', ' ')}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <span className="text-gray-400">None</span>
-                                  )}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                          
-                          {bloodInventory.length === 0 && (
-                            <tr>
-                              <td colSpan={5} className="py-8 text-center text-gray-500">
-                                No blood inventory found for {currentUser.hospitalName}. Add inventory to get started.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </CardContent>
-                </Card>
+                <InventoryManager />
               </TabsContent>
               
               <TabsContent value="requests">
@@ -577,7 +529,7 @@ const DashboardPage = () => {
                                   {request.urgency.charAt(0).toUpperCase() + request.urgency.slice(1)}
                                 </Badge>
                                 <Badge variant="outline" className="ml-2 bg-green-50">
-                                  Match: {request.matchPercentage}%
+                                  AI Match: {Math.round(request.matchPercentage || 0)}%
                                 </Badge>
                               </div>
                               
@@ -606,15 +558,15 @@ const DashboardPage = () => {
                                 
                                 <div className="flex items-center text-sm">
                                   <div className={`flex items-center ${
-                                    request.matchPercentage > 90 ? 'text-green-600' :
-                                    request.matchPercentage > 70 ? 'text-amber-600' :
+                                    (request.matchPercentage || 0) > 90 ? 'text-green-600' :
+                                    (request.matchPercentage || 0) > 70 ? 'text-amber-600' :
                                     'text-gray-500'
                                   }`}>
                                     <Brain className="h-4 w-4 mr-1" />
                                     <span>
-                                      {request.matchPercentage > 90 ? '3+ hospitals matched' :
-                                       request.matchPercentage > 70 ? '2 hospitals matched' :
-                                       request.matchPercentage > 50 ? '1 hospital matched' :
+                                      {(request.matchPercentage || 0) > 90 ? '3+ hospitals matched' :
+                                       (request.matchPercentage || 0) > 70 ? '2 hospitals matched' :
+                                       (request.matchPercentage || 0) > 50 ? '1 hospital matched' :
                                        'Looking for matches...'}
                                     </span>
                                   </div>
@@ -633,6 +585,23 @@ const DashboardPage = () => {
                                   </div>
                                 </div>
                               )}
+                            </div>
+                            
+                            <div className="flex flex-col gap-2 ml-4">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openEditRequestDialog(request)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => handleDeleteRequest(request.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
                         </div>
@@ -659,154 +628,7 @@ const DashboardPage = () => {
         )}
       </div>
       
-      <Dialog open={isAddingInventory} onOpenChange={setIsAddingInventory}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Add Blood Inventory</DialogTitle>
-            <DialogDescription>
-              Add new blood units to your hospital inventory. The more details you provide, the better our AI can match blood to requests.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="bloodType">Blood Type</Label>
-                <Select
-                  value={newInventoryForm.bloodType}
-                  onValueChange={(value) => setNewInventoryForm({...newInventoryForm, bloodType: value})}
-                >
-                  <SelectTrigger id="bloodType">
-                    <SelectValue placeholder="Select Blood Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="A">A</SelectItem>
-                    <SelectItem value="B">B</SelectItem>
-                    <SelectItem value="AB">AB</SelectItem>
-                    <SelectItem value="O">O</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="rhFactor">Rh Factor</Label>
-                <Select
-                  value={newInventoryForm.rhFactor}
-                  onValueChange={(value) => setNewInventoryForm({...newInventoryForm, rhFactor: value})}
-                >
-                  <SelectTrigger id="rhFactor">
-                    <SelectValue placeholder="Select Rh Factor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="positive">Positive (+)</SelectItem>
-                    <SelectItem value="negative">Negative (-)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="units">Units</Label>
-              <Input
-                id="units"
-                type="number"
-                min="1"
-                value={newInventoryForm.units}
-                onChange={(e) => setNewInventoryForm({...newInventoryForm, units: parseInt(e.target.value) || 1})}
-              />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="processedDate">Processing Date</Label>
-                <Input
-                  id="processedDate"
-                  type="date"
-                  value={newInventoryForm.processedDate}
-                  onChange={(e) => setNewInventoryForm({...newInventoryForm, processedDate: e.target.value})}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="expirationDate">Expiration Date</Label>
-                <Input
-                  id="expirationDate"
-                  type="date"
-                  value={newInventoryForm.expirationDate}
-                  onChange={(e) => setNewInventoryForm({...newInventoryForm, expirationDate: e.target.value})}
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="donorAge">Donor Age</Label>
-              <Input
-                id="donorAge"
-                type="number"
-                min="18"
-                max="65"
-                value={newInventoryForm.donorAge}
-                onChange={(e) => setNewInventoryForm({...newInventoryForm, donorAge: parseInt(e.target.value) || 30})}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label>Special Attributes</Label>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="irradiated"
-                    checked={newInventoryForm.specialAttributes.includes('irradiated')}
-                    onCheckedChange={(checked) => 
-                      handleSpecialAttributesChange('irradiated', checked === true)
-                    }
-                  />
-                  <label htmlFor="irradiated" className="text-sm">Irradiated</label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="leukoreduced"
-                    checked={newInventoryForm.specialAttributes.includes('leukoreduced')}
-                    onCheckedChange={(checked) => 
-                      handleSpecialAttributesChange('leukoreduced', checked === true)
-                    }
-                  />
-                  <label htmlFor="leukoreduced" className="text-sm">Leukoreduced</label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="cmv-negative"
-                    checked={newInventoryForm.specialAttributes.includes('cmv-negative')}
-                    onCheckedChange={(checked) => 
-                      handleSpecialAttributesChange('cmv-negative', checked === true)
-                    }
-                  />
-                  <label htmlFor="cmv-negative" className="text-sm">CMV Negative</label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="washed"
-                    checked={newInventoryForm.specialAttributes.includes('washed')}
-                    onCheckedChange={(checked) => 
-                      handleSpecialAttributesChange('washed', checked === true)
-                    }
-                  />
-                  <label htmlFor="washed" className="text-sm">Washed</label>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddingInventory(false)}>Cancel</Button>
-            <Button onClick={handleAddInventory}>Add to Inventory</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
+      {/* Create Request Dialog */}
       <Dialog open={isCreatingRequest} onOpenChange={setIsCreatingRequest}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -915,6 +737,119 @@ const DashboardPage = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreatingRequest(false)}>Cancel</Button>
             <Button onClick={handleCreateBloodRequest}>Submit Request</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Request Dialog */}
+      <Dialog open={isEditRequestDialogOpen} onOpenChange={setIsEditRequestDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Blood Request</DialogTitle>
+            <DialogDescription>
+              Update your blood request details.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editBloodType">Blood Type</Label>
+                <Select
+                  value={newRequestForm.bloodType}
+                  onValueChange={(value) => setNewRequestForm({...newRequestForm, bloodType: value})}
+                >
+                  <SelectTrigger id="editBloodType">
+                    <SelectValue placeholder="Select Blood Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A">A</SelectItem>
+                    <SelectItem value="B">B</SelectItem>
+                    <SelectItem value="AB">AB</SelectItem>
+                    <SelectItem value="O">O</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="editUrgency">Urgency</Label>
+                <Select
+                  value={newRequestForm.urgency}
+                  onValueChange={(value) => setNewRequestForm({...newRequestForm, urgency: value})}
+                >
+                  <SelectTrigger id="editUrgency">
+                    <SelectValue placeholder="Select Urgency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="routine">Routine</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="editUnits">Units Needed</Label>
+              <Input
+                id="editUnits"
+                type="number"
+                min="1"
+                value={newRequestForm.units}
+                onChange={(e) => setNewRequestForm({...newRequestForm, units: parseInt(e.target.value) || 1})}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="editPatientAge">Patient Age</Label>
+                <Input
+                  id="editPatientAge"
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={newRequestForm.patientAge}
+                  onChange={(e) => setNewRequestForm({...newRequestForm, patientAge: parseInt(e.target.value) || 30})}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="editPatientWeight">Patient Weight (kg)</Label>
+                <Input
+                  id="editPatientWeight"
+                  type="number"
+                  min="1"
+                  max="200"
+                  value={newRequestForm.patientWeight}
+                  onChange={(e) => setNewRequestForm({...newRequestForm, patientWeight: parseInt(e.target.value) || 70})}
+                />
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="editMedicalCondition">Medical Condition</Label>
+              <Input
+                id="editMedicalCondition"
+                value={newRequestForm.medicalCondition}
+                onChange={(e) => setNewRequestForm({...newRequestForm, medicalCondition: e.target.value})}
+                placeholder="e.g., Surgery, Trauma, Anemia"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="editNeededBy">Needed By</Label>
+              <Input
+                id="editNeededBy"
+                type="datetime-local"
+                value={newRequestForm.neededBy}
+                onChange={(e) => setNewRequestForm({...newRequestForm, neededBy: e.target.value})}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditRequestDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditRequest}>Update Request</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

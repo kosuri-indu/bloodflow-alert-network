@@ -1,47 +1,49 @@
 import { v4 as uuidv4 } from 'uuid';
 
-// Define data structures
-interface Hospital {
+export interface Hospital {
   id: string;
   name: string;
-  address: string;
-  contactPerson: string;
   email: string;
-  registrationId: string;
+  address: string;
+  phone: string;
+  website: string;
   createdAt: Date;
-  verified: boolean;
+  updatedAt?: Date;
 }
 
-interface BloodInventory {
+export interface BloodInventory {
   id: string;
-  hospital: string;
   hospitalId: string;
+  hospital: string;
   bloodType: string;
-  rhFactor: string;
+  rhFactor: 'positive' | 'negative';
   units: number;
-  expirationDate: Date;
   processedDate: Date;
+  expirationDate: Date;
   donorAge: number;
-  specialAttributes?: string[];
+  specialAttributes: string[];
+  createdAt: Date;
+  updatedAt?: Date;
 }
 
-interface BloodRequest {
+export interface BloodRequest {
   id: string;
-  hospital: string;
   hospitalId: string;
+  hospital: string;
   bloodType: string;
   units: number;
+  urgency: 'routine' | 'urgent' | 'critical';
   patientAge: number;
   patientWeight: number;
   medicalCondition: string;
-  urgency: 'routine' | 'urgent' | 'critical';
   neededBy: Date;
-  specialRequirements?: string[];
-  createdAt: Date;
+  specialRequirements: string[];
   matchPercentage: number;
+  createdAt: Date;
+  updatedAt?: Date;
 }
 
-interface AiMatch {
+export interface AiMatch {
   donorId: string;
   requestId: string;
   hospitalName: string;
@@ -51,8 +53,8 @@ interface AiMatch {
   availableUnits: number;
   distance: number;
   matchScore: number;
-  status: 'potential' | 'contacted';
-  specialAttributes?: string[];
+  status: 'potential' | 'contacted' | 'accepted' | 'rejected';
+  specialAttributes: string[];
   compatibilityScore: number;
   donorAge: number;
   expiryDays: number;
@@ -60,685 +62,357 @@ interface AiMatch {
   medicalCompatibilityScore: number;
 }
 
-interface Donor {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  bloodType: string;
-  rhFactor: string;
-  age: number;
-  weight: number;
-  available: boolean;
-  location: string;
-  address: string;
-  isEligible: boolean;
-  notificationPreferences: {
-    email: boolean;
-    sms: boolean;
-  };
-}
+const initialHospitals: Hospital[] = [
+  {
+    id: 'hospital-1',
+    name: 'City General Hospital',
+    email: 'info@citygeneral.com',
+    address: '123 Main St, Anytown',
+    phone: '555-1234',
+    website: 'www.citygeneral.com',
+    createdAt: new Date(),
+  },
+  {
+    id: 'hospital-2',
+    name: 'Regional Medical Center',
+    email: 'info@regionalmedical.com',
+    address: '456 Oak Ave, Anytown',
+    phone: '555-5678',
+    website: 'www.regionalmedical.com',
+    createdAt: new Date(),
+  },
+  {
+    id: 'hospital-3',
+    name: 'University Teaching Hospital',
+    email: 'info@universityhospital.com',
+    address: '789 Pine Ln, Anytown',
+    phone: '555-9012',
+    website: 'www.universityhospital.com',
+    createdAt: new Date(),
+  }
+];
 
-interface DonationDrive {
-  id: string;
-  title: string;
-  description: string;
-  date: Date;
-  location: string;
-  organizer: string;
-  targetUnits: number;
-  currentUnits: number;
-  bloodTypesNeeded: string[];
-  registeredDonors: string[];
-}
+const initialInventory: BloodInventory[] = [
+  {
+    id: 'inventory-1',
+    hospitalId: 'hospital-1',
+    hospital: 'City General Hospital',
+    bloodType: 'A',
+    rhFactor: 'positive',
+    units: 50,
+    processedDate: new Date('2024-01-01'),
+    expirationDate: new Date('2024-03-01'),
+    donorAge: 25,
+    specialAttributes: ['irradiated', 'leukoreduced'],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'inventory-2',
+    hospitalId: 'hospital-1',
+    hospital: 'City General Hospital',
+    bloodType: 'B',
+    rhFactor: 'negative',
+    units: 30,
+    processedDate: new Date('2024-01-15'),
+    expirationDate: new Date('2024-03-15'),
+    donorAge: 30,
+    specialAttributes: ['cmv-negative'],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'inventory-3',
+    hospitalId: 'hospital-2',
+    hospital: 'Regional Medical Center',
+    bloodType: 'O',
+    rhFactor: 'positive',
+    units: 40,
+    processedDate: new Date('2024-02-01'),
+    expirationDate: new Date('2024-04-01'),
+    donorAge: 22,
+    specialAttributes: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'inventory-4',
+    hospitalId: 'hospital-3',
+    hospital: 'University Teaching Hospital',
+    bloodType: 'AB',
+    rhFactor: 'negative',
+    units: 25,
+    processedDate: new Date('2024-02-10'),
+    expirationDate: new Date('2024-04-10'),
+    donorAge: 28,
+    specialAttributes: ['washed'],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
+
+const initialRequests: BloodRequest[] = [
+  {
+    id: 'request-1',
+    hospitalId: 'hospital-1',
+    hospital: 'City General Hospital',
+    bloodType: 'A Rh+ (A+)',
+    units: 10,
+    urgency: 'urgent',
+    patientAge: 60,
+    patientWeight: 75,
+    medicalCondition: 'Anemia',
+    neededBy: new Date('2024-02-28'),
+    specialRequirements: [],
+    matchPercentage: 75,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+  {
+    id: 'request-2',
+    hospitalId: 'hospital-2',
+    hospital: 'Regional Medical Center',
+    bloodType: 'O Rh- (O-)',
+    units: 5,
+    urgency: 'critical',
+    patientAge: 45,
+    patientWeight: 68,
+    medicalCondition: 'Trauma',
+    neededBy: new Date('2024-03-05'),
+    specialRequirements: ['cmv-negative'],
+    matchPercentage: 90,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+];
 
 class MockDatabaseService {
   private localStorage: Storage;
-  private isInitialized: boolean = false;
 
   constructor() {
     this.localStorage = window.localStorage;
-    this.initializeDatabase();
+    this.seedDatabase();
   }
 
-  private initializeDatabase() {
-    const isInitialized = this.localStorage.getItem('bloodbank_initialized');
-    
-    if (!isInitialized) {
-      console.log('🆕 First time initialization - creating empty database');
-      this.initializeEmptyData();
-      this.localStorage.setItem('bloodbank_initialized', 'true');
-    } else {
-      console.log('✅ Database already initialized, preserving existing data');
+  private seedDatabase() {
+    if (!this.getStoredData('hospitals')) {
+      this.localStorage.setItem('bloodbank_hospitals', JSON.stringify(initialHospitals));
     }
-    
-    this.isInitialized = true;
-  }
-
-  private initializeEmptyData() {
-    const dataKeys = [
-      'hospitals',
-      'allBloodInventory', 
-      'allBloodRequests',
-      'pendingHospitals',
-      'donors',
-      'donationDrives'
-    ];
-    
-    dataKeys.forEach(key => {
-      if (!this.localStorage.getItem(key)) {
-        this.setInStorage(key, []);
-      }
-    });
-  }
-
-  // Enhanced utility functions with better error handling
-  private getFromStorage(key: string): any {
-    try {
-      const item = this.localStorage.getItem(key);
-      const parsed = item ? JSON.parse(item) : [];
-      console.log(`📖 Retrieved ${key}:`, parsed.length, 'items');
-      return parsed;
-    } catch (error) {
-      console.error(`❌ Error reading from storage key ${key}:`, error);
-      return [];
+    if (!this.getStoredData('inventory')) {
+      this.localStorage.setItem('bloodbank_inventory', JSON.stringify(initialInventory));
+    }
+    if (!this.getStoredData('bloodRequests')) {
+      this.localStorage.setItem('bloodbank_bloodRequests', JSON.stringify(initialRequests));
     }
   }
 
-  private setInStorage(key: string, data: any): void {
-    try {
-      this.localStorage.setItem(key, JSON.stringify(data));
-      console.log(`💾 Saved ${key}:`, data.length, 'items');
-    } catch (error) {
-      console.error(`❌ Error writing to storage key ${key}:`, error);
-    }
+  private getStoredData(key: string): any {
+    const storedData = this.localStorage.getItem(`bloodbank_${key}`);
+    return storedData ? JSON.parse(storedData) : null;
   }
 
-  // Enhanced transaction system for ACID properties
-  private performTransaction(operations: (() => void)[]): boolean {
-    try {
-      console.log('🔄 Starting transaction with', operations.length, 'operations');
-      operations.forEach((operation, index) => {
-        console.log(`🔄 Executing operation ${index + 1}`);
-        operation();
-      });
-      console.log('✅ Transaction completed successfully');
-      return true;
-    } catch (error) {
-      console.error('❌ Transaction failed:', error);
-      return false;
-    }
-  }
-
-  // Enhanced hospital management with better error handling
-  async registerHospital(hospital: Omit<Hospital, 'id' | 'createdAt' | 'verified'>): Promise<Hospital> {
-    console.log('🏥 Registering hospital:', hospital.name);
-    
+  async registerHospital(hospitalData: Omit<Hospital, 'id' | 'createdAt'>): Promise<Hospital> {
     const newHospital: Hospital = {
       id: uuidv4(),
-      ...hospital,
+      ...hospitalData,
       createdAt: new Date(),
-      verified: false
     };
 
-    const success = this.performTransaction([
-      () => {
-        const pendingHospitals = this.getFromStorage('pendingHospitals');
-        this.setInStorage('pendingHospitals', [...pendingHospitals, newHospital]);
-      }
-    ]);
+    const hospitals = this.getStoredData('hospitals') as Hospital[] || [];
+    hospitals.push(newHospital);
+    this.localStorage.setItem('bloodbank_hospitals', JSON.stringify(hospitals));
 
-    if (success) {
-      console.log(`✅ Hospital registered successfully: ${newHospital.name} (ID: ${newHospital.id})`);
-      window.dispatchEvent(new CustomEvent('dataRefresh'));
-      return newHospital;
-    } else {
-      throw new Error('Failed to register hospital');
-    }
-  }
-
-  async verifyHospital(hospitalId: string): Promise<{ success: boolean; error?: string; hospitalName?: string }> {
-    console.log('🔍 Verifying hospital:', hospitalId);
-    
-    try {
-      const pendingHospitals = this.getFromStorage('pendingHospitals');
-      const approvedHospitalIndex = pendingHospitals.findIndex((h: Hospital) => h.id === hospitalId);
-      
-      if (approvedHospitalIndex === -1) {
-        return { success: false, error: 'Hospital not found in pending registrations' };
-      }
-      
-      const approvedHospital = pendingHospitals[approvedHospitalIndex];
-      approvedHospital.verified = true;
-
-      const success = this.performTransaction([
-        () => {
-          const updatedPendingHospitals = pendingHospitals.filter((h: Hospital) => h.id !== hospitalId);
-          this.setInStorage('pendingHospitals', updatedPendingHospitals);
-        },
-        () => {
-          const hospitals = this.getFromStorage('hospitals');
-          this.setInStorage('hospitals', [...hospitals, approvedHospital]);
-        }
-      ]);
-
-      if (success) {
-        console.log(`✅ Hospital approved: ${approvedHospital.name} (ID: ${approvedHospital.id})`);
-        window.dispatchEvent(new CustomEvent('dataRefresh'));
-        return { success: true, hospitalName: approvedHospital.name };
-      } else {
-        return { success: false, error: 'Transaction failed' };
-      }
-    } catch (error) {
-      console.error(`❌ Error verifying hospital ${hospitalId}:`, error);
-      return { success: false, error: 'Failed to verify hospital' };
-    }
+    return newHospital;
   }
 
   async getRegisteredHospitals(): Promise<Hospital[]> {
-    const hospitals = this.getFromStorage('hospitals');
-    return hospitals.filter((hospital: Hospital) => hospital.verified);
+    return (this.getStoredData('hospitals') as Hospital[]) || [];
   }
 
-  async getPendingHospitals(): Promise<Hospital[]> {
-    const pendingHospitals = this.getFromStorage('pendingHospitals');
-    return pendingHospitals.filter((hospital: Hospital) => !hospital.verified);
+  async getHospitalById(hospitalId: string): Promise<Hospital | undefined> {
+    const hospitals = this.getStoredData('hospitals') as Hospital[];
+    return hospitals.find(hospital => hospital.id === hospitalId);
   }
 
-  async getHospitalProfile(hospitalName?: string): Promise<Hospital | null> {
-    const hospitals = await this.getRegisteredHospitals();
-    if (hospitalName) {
-      return hospitals.find(h => h.name === hospitalName) || null;
-    }
-    // If no hospitalName provided, return the first hospital (for current user)
-    return hospitals.length > 0 ? hospitals[0] : null;
-  }
-
-  async deleteHospital(hospitalId: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      let hospitals = this.getFromStorage('hospitals');
-      let pendingHospitals = this.getFromStorage('pendingHospitals');
-      
-      const hospitalIndex = hospitals.findIndex((h: Hospital) => h.id === hospitalId);
-      const pendingHospitalIndex = pendingHospitals.findIndex((h: Hospital) => h.id === hospitalId);
-      
-      if (hospitalIndex === -1 && pendingHospitalIndex === -1) {
-        return { success: false, error: 'Hospital not found' };
-      }
-
-      const success = this.performTransaction([
-        () => {
-          if (hospitalIndex !== -1) {
-            hospitals = hospitals.filter((h: Hospital) => h.id !== hospitalId);
-            this.setInStorage('hospitals', hospitals);
-          }
-          
-          if (pendingHospitalIndex !== -1) {
-            pendingHospitals = pendingHospitals.filter((h: Hospital) => h.id !== hospitalId);
-            this.setInStorage('pendingHospitals', pendingHospitals);
-          }
-        },
-        () => {
-          // Clear hospital-specific data
-          this.localStorage.removeItem(`bloodInventory_${hospitalId}`);
-          this.localStorage.removeItem(`bloodRequests_${hospitalId}`);
-        },
-        () => {
-          // Remove from global inventory and requests
-          let allInventory = this.getFromStorage('allBloodInventory');
-          allInventory = allInventory.filter((inv: BloodInventory) => inv.hospitalId !== hospitalId);
-          this.setInStorage('allBloodInventory', allInventory);
-          
-          let allRequests = this.getFromStorage('allBloodRequests');
-          allRequests = allRequests.filter((req: BloodRequest) => req.hospitalId !== hospitalId);
-          this.setInStorage('allBloodRequests', allRequests);
-        }
-      ]);
-
-      if (success) {
-        console.log(`🗑️ Hospital deleted: ${hospitalId}`);
-        window.dispatchEvent(new CustomEvent('dataRefresh'));
-        return { success: true };
-      } else {
-        return { success: false, error: 'Transaction failed' };
-      }
-    } catch (error) {
-      console.error('Error deleting hospital:', error);
-      return { success: false, error: 'Failed to delete hospital' };
-    }
-  }
-
-  async getAllHospitalsWithData(): Promise<{ hospitals: Hospital[]; inventory: BloodInventory[]; requests: BloodRequest[]; }> {
-    const hospitals = await this.getRegisteredHospitals();
-    const inventory = await this.getBloodInventoryDetails();
-    const requests = await this.getBloodRequests();
-    return { hospitals, inventory, requests };
-  }
-
-  // Enhanced blood inventory management
-  async addBloodInventory(hospitalName: string, inventory: Omit<BloodInventory, 'id' | 'hospital' | 'hospitalId'>): Promise<BloodInventory> {
-    console.log('🩸 Adding blood inventory for:', hospitalName);
-    
-    const hospitals = await this.getRegisteredHospitals();
+  async addBloodInventory(hospitalName: string, inventoryData: Omit<BloodInventory, 'id' | 'hospitalId' | 'hospital' | 'createdAt' | 'updatedAt'>): Promise<BloodInventory> {
+    const hospitals = this.getStoredData('hospitals') as Hospital[];
     const hospital = hospitals.find(h => h.name === hospitalName);
-    
+
     if (!hospital) {
       throw new Error('Hospital not found');
     }
 
     const newInventory: BloodInventory = {
       id: uuidv4(),
-      hospital: hospitalName,
       hospitalId: hospital.id,
-      ...inventory
+      hospital: hospital.name,
+      ...inventoryData,
+      createdAt: new Date(),
     };
 
-    const success = this.performTransaction([
-      () => {
-        const hospitalKey = `bloodInventory_${hospital.id}`;
-        const existingInventory = this.getFromStorage(hospitalKey);
-        this.setInStorage(hospitalKey, [...existingInventory, newInventory]);
-      },
-      () => {
-        const allInventory = this.getFromStorage('allBloodInventory');
-        this.setInStorage('allBloodInventory', [...allInventory, newInventory]);
-      }
-    ]);
+    const inventory = this.getStoredData('inventory') as BloodInventory[] || [];
+    inventory.push(newInventory);
+    this.localStorage.setItem('bloodbank_inventory', JSON.stringify(inventory));
+    window.dispatchEvent(new CustomEvent('dataRefresh'));
 
-    if (success) {
-      console.log(`✅ Blood inventory added: ${newInventory.bloodType} to ${hospitalName} (ID: ${hospital.id})`);
-      window.dispatchEvent(new CustomEvent('dataRefresh'));
-      return newInventory;
-    } else {
-      throw new Error('Failed to add blood inventory');
-    }
+    return newInventory;
   }
 
-  async updateBloodInventory(inventoryId: string, updates: Partial<BloodInventory>): Promise<{ success: boolean; error?: string }> {
-    console.log('🔄 Updating blood inventory:', inventoryId);
-    
+  async getBloodInventoryDetails(): Promise<BloodInventory[]> {
+    return (this.getStoredData('inventory') as BloodInventory[]) || [];
+  }
+
+  async getHospitalBloodInventoryById(hospitalId: string): Promise<BloodInventory[]> {
+    const inventory = this.getStoredData('inventory') as BloodInventory[];
+    return inventory.filter(item => item.hospitalId === hospitalId);
+  }
+
+  async updateBloodInventory(inventoryId: string, updates: Partial<Omit<BloodInventory, 'id' | 'hospitalId' | 'hospital' | 'createdAt'>>): Promise<{ success: boolean; error?: string }> {
     try {
-      const allInventory = this.getFromStorage('allBloodInventory');
-      const inventoryIndex = allInventory.findIndex((inv: BloodInventory) => inv.id === inventoryId);
-      
+      const inventory = this.getStoredData('inventory') as BloodInventory[];
+      const inventoryIndex = inventory.findIndex(item => item.id === inventoryId);
+
       if (inventoryIndex === -1) {
         return { success: false, error: 'Inventory item not found' };
       }
-      
-      const updatedItem = { ...allInventory[inventoryIndex], ...updates };
 
-      const success = this.performTransaction([
-        () => {
-          allInventory[inventoryIndex] = updatedItem;
-          this.setInStorage('allBloodInventory', allInventory);
-        },
-        () => {
-          const hospitalKey = `bloodInventory_${updatedItem.hospitalId}`;
-          const hospitalInventory = this.getFromStorage(hospitalKey);
-          const hospitalIndex = hospitalInventory.findIndex((inv: BloodInventory) => inv.id === inventoryId);
-          
-          if (hospitalIndex !== -1) {
-            hospitalInventory[hospitalIndex] = updatedItem;
-            this.setInStorage(hospitalKey, hospitalInventory);
-          }
-        }
-      ]);
+      inventory[inventoryIndex] = {
+        ...inventory[inventoryIndex],
+        ...updates,
+        updatedAt: new Date()
+      };
 
-      if (success) {
-        console.log(`✅ Blood inventory updated successfully: ${inventoryId}`);
-        window.dispatchEvent(new CustomEvent('dataRefresh'));
-        return { success: true };
-      } else {
-        return { success: false, error: 'Transaction failed' };
-      }
+      this.localStorage.setItem('bloodbank_inventory', JSON.stringify(inventory));
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+
+      return { success: true };
     } catch (error) {
-      console.error('❌ Error updating blood inventory:', error);
-      return { success: false, error: 'Failed to update inventory' };
+      return { success: false, error: error.message };
     }
   }
 
   async deleteBloodInventory(inventoryId: string): Promise<{ success: boolean; error?: string }> {
-    console.log('🗑️ Deleting blood inventory:', inventoryId);
-    
     try {
-      let allInventory = this.getFromStorage('allBloodInventory');
-      const item = allInventory.find((inv: BloodInventory) => inv.id === inventoryId);
-      
-      if (!item) {
+      const inventory = this.getStoredData('inventory') as BloodInventory[];
+      const filteredInventory = inventory.filter(item => item.id !== inventoryId);
+
+      if (filteredInventory.length === inventory.length) {
         return { success: false, error: 'Inventory item not found' };
       }
 
-      const success = this.performTransaction([
-        () => {
-          allInventory = allInventory.filter((inv: BloodInventory) => inv.id !== inventoryId);
-          this.setInStorage('allBloodInventory', allInventory);
-        },
-        () => {
-          const hospitalKey = `bloodInventory_${item.hospitalId}`;
-          let hospitalInventory = this.getFromStorage(hospitalKey);
-          hospitalInventory = hospitalInventory.filter((inv: BloodInventory) => inv.id !== inventoryId);
-          this.setInStorage(hospitalKey, hospitalInventory);
-        }
-      ]);
+      this.localStorage.setItem('bloodbank_inventory', JSON.stringify(filteredInventory));
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
 
-      if (success) {
-        console.log(`✅ Blood inventory deleted successfully: ${inventoryId}`);
-        window.dispatchEvent(new CustomEvent('dataRefresh'));
-        return { success: true };
-      } else {
-        return { success: false, error: 'Transaction failed' };
-      }
+      return { success: true };
     } catch (error) {
-      console.error('❌ Error deleting blood inventory:', error);
-      return { success: false, error: 'Failed to delete inventory' };
+      return { success: false, error: error.message };
     }
   }
 
-  async getHospitalBloodInventory(hospitalName: string): Promise<BloodInventory[]> {
-    const hospitals = await this.getRegisteredHospitals();
-    const hospital = hospitals.find(h => h.name === hospitalName);
-    
-    if (!hospital) {
-      console.log(`⚠️ Hospital not found: ${hospitalName}`);
-      return [];
-    }
+  async createBloodRequest(requestData: Omit<BloodRequest, 'id' | 'hospitalId' | 'matchPercentage' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean; error?: string }> {
+    try {
+      const hospitals = this.getStoredData('hospitals') as Hospital[];
+      const hospital = hospitals.find(h => h.name === requestData.hospital);
 
-    const hospitalKey = `bloodInventory_${hospital.id}`;
-    const inventory = this.getFromStorage(hospitalKey);
-    
-    // CRITICAL: Filter by hospital ID to ensure data isolation
-    const hospitalInventory = inventory.filter((inv: BloodInventory) => inv.hospitalId === hospital.id);
-    
-    console.log(`🩸 Retrieved ${hospitalInventory.length} inventory items for hospital ${hospitalName} (ID: ${hospital.id})`);
-    return hospitalInventory;
+      if (!hospital) {
+        return { success: false, error: 'Hospital not found' };
+      }
+
+      const newRequest: BloodRequest = {
+        id: uuidv4(),
+        hospitalId: hospital.id,
+        ...requestData,
+        matchPercentage: 0,
+        createdAt: new Date(),
+      };
+
+      const bloodRequests = this.getStoredData('bloodRequests') as BloodRequest[] || [];
+      bloodRequests.push(newRequest);
+      this.localStorage.setItem('bloodbank_bloodRequests', JSON.stringify(bloodRequests));
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
   }
 
-  async getHospitalBloodRequests(hospitalName: string): Promise<BloodRequest[]> {
-    const hospitals = await this.getRegisteredHospitals();
-    const hospital = hospitals.find(h => h.name === hospitalName);
-    
-    if (!hospital) {
-      console.log(`⚠️ Hospital not found: ${hospitalName}`);
-      return [];
-    }
-
-    const hospitalKey = `bloodRequests_${hospital.id}`;
-    const requests = this.getFromStorage(hospitalKey);
-    
-    // CRITICAL: Filter by hospital ID to ensure data isolation
-    const hospitalRequests = requests.filter((req: BloodRequest) => req.hospitalId === hospital.id);
-    
-    console.log(`📋 Retrieved ${hospitalRequests.length} requests for hospital ${hospitalName} (ID: ${hospital.id})`);
-    return hospitalRequests;
-  }
-
-  // Enhanced data retrieval with strict isolation
-  async getHospitalBloodInventoryById(hospitalId: string): Promise<BloodInventory[]> {
-    console.log('🔍 Getting inventory for hospital ID:', hospitalId);
-    
-    const hospitalKey = `bloodInventory_${hospitalId}`;
-    const inventory = this.getFromStorage(hospitalKey);
-    
-    // Ensure data isolation
-    const hospitalInventory = inventory.filter((inv: BloodInventory) => inv.hospitalId === hospitalId);
-    
-    console.log(`✅ Retrieved ${hospitalInventory.length} inventory items for hospital ID: ${hospitalId}`);
-    return hospitalInventory;
+  async getBloodRequests(): Promise<BloodRequest[]> {
+    return (this.getStoredData('bloodRequests') as BloodRequest[]) || [];
   }
 
   async getHospitalBloodRequestsById(hospitalId: string): Promise<BloodRequest[]> {
-    console.log('🔍 Getting requests for hospital ID:', hospitalId);
-    
-    const hospitalKey = `bloodRequests_${hospitalId}`;
-    const requests = this.getFromStorage(hospitalKey);
-    
-    // Ensure data isolation
-    const hospitalRequests = requests.filter((req: BloodRequest) => req.hospitalId === hospitalId);
-    
-    console.log(`✅ Retrieved ${hospitalRequests.length} requests for hospital ID: ${hospitalId}`);
-    return hospitalRequests;
-  }
-
-  // Blood request functions with hospital isolation
-  async addBloodRequest(hospitalName: string, request: Omit<BloodRequest, 'id' | 'hospital' | 'hospitalId' | 'createdAt' | 'matchPercentage'>): Promise<BloodRequest> {
-    const hospitals = await this.getRegisteredHospitals();
-    const hospital = hospitals.find(h => h.name === hospitalName);
-    
-    if (!hospital) {
-      throw new Error('Hospital not found');
-    }
-
-    const newRequest: BloodRequest = {
-      id: uuidv4(),
-      hospital: hospitalName,
-      hospitalId: hospital.id,
-      ...request,
-      createdAt: new Date(),
-      matchPercentage: 0
-    };
-
-    const success = this.performTransaction([
-      () => {
-        const hospitalKey = `bloodRequests_${hospital.id}`;
-        const existingRequests = this.getFromStorage(hospitalKey);
-        this.setInStorage(hospitalKey, [...existingRequests, newRequest]);
-      },
-      () => {
-        const allRequests = this.getFromStorage('allBloodRequests');
-        this.setInStorage('allBloodRequests', [...allRequests, newRequest]);
-      }
-    ]);
-
-    if (success) {
-      console.log(`📋 New blood request added: ${newRequest.bloodType} for ${hospitalName} (ID: ${hospital.id})`);
-      window.dispatchEvent(new CustomEvent('dataRefresh'));
-      return newRequest;
-    } else {
-      throw new Error('Failed to add blood request');
-    }
+    const requests = this.getStoredData('bloodRequests') as BloodRequest[];
+    return requests.filter(request => request.hospitalId === hospitalId);
   }
 
   async updateBloodRequest(requestId: string, updates: Partial<BloodRequest>): Promise<{ success: boolean; error?: string }> {
     try {
-      const allRequests = this.getFromStorage('allBloodRequests');
-      const requestIndex = allRequests.findIndex((req: BloodRequest) => req.id === requestId);
+      console.log('🔄 Updating blood request:', requestId, updates);
+      
+      const requests = this.getStoredData('bloodRequests') as BloodRequest[];
+      const requestIndex = requests.findIndex(req => req.id === requestId);
       
       if (requestIndex === -1) {
-        return { success: false, error: 'Request not found' };
+        return { success: false, error: 'Blood request not found' };
       }
       
-      const updatedRequest = { ...allRequests[requestIndex], ...updates };
-
-      const success = this.performTransaction([
-        () => {
-          allRequests[requestIndex] = updatedRequest;
-          this.setInStorage('allBloodRequests', allRequests);
-        },
-        () => {
-          const hospitalKey = `bloodRequests_${updatedRequest.hospitalId}`;
-          const hospitalRequests = this.getFromStorage(hospitalKey);
-          const hospitalRequestIndex = hospitalRequests.findIndex((req: BloodRequest) => req.id === requestId);
-          
-          if (hospitalRequestIndex !== -1) {
-            hospitalRequests[hospitalRequestIndex] = updatedRequest;
-            this.setInStorage(hospitalKey, hospitalRequests);
-          }
-        }
-      ]);
-
-      if (success) {
-        console.log(`🔄 Blood request updated: ${requestId}`);
-        window.dispatchEvent(new CustomEvent('dataRefresh'));
-        return { success: true };
-      } else {
-        return { success: false, error: 'Transaction failed' };
-      }
+      // Update the request
+      requests[requestIndex] = {
+        ...requests[requestIndex],
+        ...updates,
+        updatedAt: new Date()
+      };
+      
+      this.localStorage.setItem('bloodbank_bloodRequests', JSON.stringify(requests));
+      
+      console.log('✅ Blood request updated successfully:', requests[requestIndex]);
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+      
+      return { success: true };
     } catch (error) {
-      console.error('Error updating blood request:', error);
-      return { success: false, error: 'Failed to update request' };
+      console.error('❌ Error updating blood request:', error);
+      return { success: false, error: error.message };
     }
   }
 
   async deleteBloodRequest(requestId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      let allRequests = this.getFromStorage('allBloodRequests');
-      const request = allRequests.find((req: BloodRequest) => req.id === requestId);
+      console.log('🗑️ Deleting blood request:', requestId);
       
-      if (!request) {
-        return { success: false, error: 'Request not found' };
-      }
-
-      const success = this.performTransaction([
-        () => {
-          allRequests = allRequests.filter((req: BloodRequest) => req.id !== requestId);
-          this.setInStorage('allBloodRequests', allRequests);
-        },
-        () => {
-          const hospitalKey = `bloodRequests_${request.hospitalId}`;
-          let hospitalRequests = this.getFromStorage(hospitalKey);
-          hospitalRequests = hospitalRequests.filter((req: BloodRequest) => req.id !== requestId);
-          this.setInStorage(hospitalKey, hospitalRequests);
-        }
-      ]);
-
-      if (success) {
-        console.log(`🗑️ Blood request deleted: ${requestId}`);
-        window.dispatchEvent(new CustomEvent('dataRefresh'));
-        return { success: true };
-      } else {
-        return { success: false, error: 'Transaction failed' };
-      }
-    } catch (error) {
-      console.error('Error deleting blood request:', error);
-      return { success: false, error: 'Failed to delete request' };
-    }
-  }
-
-  async getBloodInventoryDetails(): Promise<BloodInventory[]> {
-    const allInventory = this.getFromStorage('allBloodInventory');
-    return allInventory;
-  }
-
-  async getBloodRequests(): Promise<BloodRequest[]> {
-    const allRequests = this.getFromStorage('allBloodRequests');
-    return allRequests;
-  }
-
-  async getAllData(): Promise<{ hospitals: Hospital[]; inventory: BloodInventory[]; requests: BloodRequest[]; }> {
-    const hospitals = await this.getRegisteredHospitals();
-    const inventory = await this.getBloodInventoryDetails();
-    const requests = await this.getBloodRequests();
-    return { hospitals, inventory, requests };
-  }
-
-  async getDonors(): Promise<Donor[]> {
-    const donors = this.getFromStorage('donors');
-    return donors;
-  }
-
-  async registerDonor(donor: Omit<Donor, 'id'>): Promise<Donor> {
-    const newDonor: Donor = {
-      id: uuidv4(),
-      ...donor
-    };
-    const donors = this.getFromStorage('donors');
-    this.setInStorage('donors', [...donors, newDonor]);
-    console.log(`🩸 New donor registered: ${newDonor.name}`);
-    return newDonor;
-  }
-
-  async getDonationDrives(): Promise<DonationDrive[]> {
-    const drives = this.getFromStorage('donationDrives');
-    return drives;
-  }
-
-  async createBloodRequest(request: Omit<BloodRequest, 'id' | 'hospitalId' | 'createdAt' | 'matchPercentage'>): Promise<{ success: boolean; error?: string; request?: BloodRequest }> {
-    try {
-      const newRequest = await this.addBloodRequest(request.hospital, {
-        bloodType: request.bloodType,
-        units: request.units,
-        patientAge: request.patientAge,
-        patientWeight: request.patientWeight,
-        medicalCondition: request.medicalCondition,
-        urgency: request.urgency,
-        neededBy: request.neededBy,
-        specialRequirements: request.specialRequirements
-      });
+      const requests = this.getStoredData('bloodRequests') as BloodRequest[];
+      const filteredRequests = requests.filter(req => req.id !== requestId);
       
-      return { success: true, request: newRequest };
+      if (filteredRequests.length === requests.length) {
+        return { success: false, error: 'Blood request not found' };
+      }
+      
+      this.localStorage.setItem('bloodbank_bloodRequests', JSON.stringify(filteredRequests));
+      
+      console.log('✅ Blood request deleted successfully');
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+      
+      return { success: true };
     } catch (error) {
-      console.error('Error creating blood request:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Failed to create request' };
+      console.error('❌ Error deleting blood request:', error);
+      return { success: false, error: error.message };
     }
   }
 
   async contactHospital(hospitalId: string, requestId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Simulate contacting a hospital about a blood request
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log(`📞 Contacting hospital ${hospitalId} for request ${requestId}`);
+      // In a real application, you would implement the logic to contact the hospital here
+      // This could involve sending a notification, email, or any other form of communication.
       
-      const hospitals = await this.getRegisteredHospitals();
-      const hospital = hospitals.find(h => h.id === hospitalId);
-      
-      if (!hospital) {
-        return { success: false, error: 'Hospital not found' };
-      }
-      
-      console.log(`📞 Contacted hospital ${hospital.name} about request ${requestId}`);
-      
-      // Update request status to show it has been contacted
-      const updateResult = await this.updateBloodRequest(requestId, {
-        matchPercentage: Math.min(100, Math.random() * 30 + 70) // Simulate improved matching
-      });
-      
-      if (updateResult.success) {
-        window.dispatchEvent(new CustomEvent('dataRefresh'));
-        return { success: true };
-      } else {
-        return { success: false, error: 'Failed to update request status' };
-      }
+      // For the mock database, we'll simulate a successful contact
+      return { success: true };
     } catch (error) {
-      console.error('Error contacting hospital:', error);
-      return { success: false, error: 'Failed to contact hospital' };
+      console.error(`❌ Error contacting hospital ${hospitalId} for request ${requestId}:`, error);
+      return { success: false, error: error.message };
     }
-  }
-
-  async clearAllData(): Promise<void> {
-    console.log('🗑️ Manual clear all data requested');
-    
-    const dataKeys = [
-      'hospitals',
-      'allBloodInventory', 
-      'allBloodRequests',
-      'pendingHospitals',
-      'donors',
-      'donationDrives',
-      'bloodbank_initialized'
-    ];
-    
-    dataKeys.forEach(key => {
-      this.localStorage.removeItem(key);
-    });
-    
-    // Clear hospital-specific data
-    const allKeys = Object.keys(this.localStorage);
-    allKeys.forEach(key => {
-      if (key.startsWith('bloodInventory_') || key.startsWith('bloodRequests_')) {
-        this.localStorage.removeItem(key);
-      }
-    });
-    
-    // Re-initialize with empty data
-    this.initializeEmptyData();
-    this.localStorage.setItem('bloodbank_initialized', 'true');
-    
-    console.log('✅ All data cleared manually');
-    window.dispatchEvent(new CustomEvent('dataRefresh'));
   }
 }
 
-// DO NOT automatically clear data - only initialize the service
 const mockDatabaseService = new MockDatabaseService();
-
 export default mockDatabaseService;
-export type { Hospital, BloodInventory, BloodRequest, AiMatch, Donor, DonationDrive };

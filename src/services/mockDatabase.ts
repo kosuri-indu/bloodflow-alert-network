@@ -68,37 +68,25 @@ export interface AiMatch {
 const initialHospitals: Hospital[] = [
   {
     id: 'hospital-1',
-    name: 'City General Hospital',
-    email: 'info@citygeneral.com',
-    address: '123 Main St, Anytown',
-    phone: '555-1234',
-    website: 'www.citygeneral.com',
-    contactPerson: 'Dr. John Smith',
-    registrationId: 'REG001',
+    name: 'Muskaan Hospital',
+    email: 'muskaan@gmail.com',
+    address: 'S R Nagar',
+    phone: '7823292290',
+    website: 'www.muskaanhospital.com',
+    contactPerson: 'Muskaan',
+    registrationId: 'MH001',
     verified: true,
     createdAt: new Date(),
   },
   {
     id: 'hospital-2',
-    name: 'Regional Medical Center',
-    email: 'info@regionalmedical.com',
-    address: '456 Oak Ave, Anytown',
-    phone: '555-5678',
-    website: 'www.regionalmedical.com',
-    contactPerson: 'Dr. Jane Doe',
-    registrationId: 'REG002',
-    verified: true,
-    createdAt: new Date(),
-  },
-  {
-    id: 'hospital-3',
-    name: 'University Teaching Hospital',
-    email: 'info@universityhospital.com',
-    address: '789 Pine Ln, Anytown',
-    phone: '555-9012',
-    website: 'www.universityhospital.com',
-    contactPerson: 'Dr. Mike Johnson',
-    registrationId: 'REG003',
+    name: 'ESI Hospital',
+    email: 'esi@gmail.com',
+    address: 'S R Nagar',
+    phone: '7823291190',
+    website: 'www.esihospital.com',
+    contactPerson: 'Indu',
+    registrationId: 'ESI001',
     verified: true,
     createdAt: new Date(),
   }
@@ -108,56 +96,56 @@ const initialInventory: BloodInventory[] = [
   {
     id: 'inventory-1',
     hospitalId: 'hospital-1',
-    hospital: 'City General Hospital',
+    hospital: 'Muskaan Hospital',
     bloodType: 'A',
     rhFactor: 'positive',
-    units: 50,
+    units: 25,
     processedDate: new Date('2024-01-01'),
     expirationDate: new Date('2024-03-01'),
-    donorAge: 25,
-    specialAttributes: ['irradiated', 'leukoreduced'],
+    donorAge: 28,
+    specialAttributes: ['irradiated'],
     createdAt: new Date(),
     updatedAt: new Date(),
   },
   {
     id: 'inventory-2',
     hospitalId: 'hospital-1',
-    hospital: 'City General Hospital',
-    bloodType: 'B',
-    rhFactor: 'negative',
+    hospital: 'Muskaan Hospital',
+    bloodType: 'O',
+    rhFactor: 'positive',
     units: 30,
     processedDate: new Date('2024-01-15'),
     expirationDate: new Date('2024-03-15'),
-    donorAge: 30,
-    specialAttributes: ['cmv-negative'],
+    donorAge: 35,
+    specialAttributes: [],
     createdAt: new Date(),
     updatedAt: new Date(),
   },
   {
     id: 'inventory-3',
     hospitalId: 'hospital-2',
-    hospital: 'Regional Medical Center',
-    bloodType: 'O',
-    rhFactor: 'positive',
-    units: 40,
+    hospital: 'ESI Hospital',
+    bloodType: 'B',
+    rhFactor: 'negative',
+    units: 20,
     processedDate: new Date('2024-02-01'),
     expirationDate: new Date('2024-04-01'),
-    donorAge: 22,
-    specialAttributes: [],
+    donorAge: 30,
+    specialAttributes: ['leukoreduced'],
     createdAt: new Date(),
     updatedAt: new Date(),
   },
   {
     id: 'inventory-4',
-    hospitalId: 'hospital-3',
-    hospital: 'University Teaching Hospital',
+    hospitalId: 'hospital-2',
+    hospital: 'ESI Hospital',
     bloodType: 'AB',
-    rhFactor: 'negative',
-    units: 25,
+    rhFactor: 'positive',
+    units: 15,
     processedDate: new Date('2024-02-10'),
     expirationDate: new Date('2024-04-10'),
-    donorAge: 28,
-    specialAttributes: ['washed'],
+    donorAge: 25,
+    specialAttributes: [],
     createdAt: new Date(),
     updatedAt: new Date(),
   },
@@ -167,31 +155,31 @@ const initialRequests: BloodRequest[] = [
   {
     id: 'request-1',
     hospitalId: 'hospital-1',
-    hospital: 'City General Hospital',
-    bloodType: 'A Rh+ (A+)',
-    units: 10,
+    hospital: 'Muskaan Hospital',
+    bloodType: 'B Rh- (B-)',
+    units: 8,
     urgency: 'urgent',
-    patientAge: 60,
-    patientWeight: 75,
-    medicalCondition: 'Anemia',
-    neededBy: new Date('2024-02-28'),
+    patientAge: 45,
+    patientWeight: 70,
+    medicalCondition: 'Surgery preparation',
+    neededBy: new Date('2024-03-15'),
     specialRequirements: [],
-    matchPercentage: 75,
+    matchPercentage: 85,
     createdAt: new Date(),
     updatedAt: new Date(),
   },
   {
     id: 'request-2',
     hospitalId: 'hospital-2',
-    hospital: 'Regional Medical Center',
-    bloodType: 'O Rh- (O-)',
-    units: 5,
+    hospital: 'ESI Hospital',
+    bloodType: 'A Rh+ (A+)',
+    units: 12,
     urgency: 'critical',
-    patientAge: 45,
-    patientWeight: 68,
-    medicalCondition: 'Trauma',
-    neededBy: new Date('2024-03-05'),
-    specialRequirements: ['cmv-negative'],
+    patientAge: 60,
+    patientWeight: 65,
+    medicalCondition: 'Emergency trauma',
+    neededBy: new Date('2024-03-10'),
+    specialRequirements: ['irradiated'],
     matchPercentage: 90,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -203,19 +191,19 @@ class MockDatabaseService {
 
   constructor() {
     this.localStorage = window.localStorage;
-    this.seedDatabase();
+    this.clearAndSeedDatabase();
   }
 
-  private seedDatabase() {
-    if (!this.getStoredData('hospitals')) {
-      this.localStorage.setItem('bloodbank_hospitals', JSON.stringify(initialHospitals));
-    }
-    if (!this.getStoredData('inventory')) {
-      this.localStorage.setItem('bloodbank_inventory', JSON.stringify(initialInventory));
-    }
-    if (!this.getStoredData('bloodRequests')) {
-      this.localStorage.setItem('bloodbank_bloodRequests', JSON.stringify(initialRequests));
-    }
+  private clearAndSeedDatabase() {
+    // Clear existing data
+    this.localStorage.removeItem('bloodbank_hospitals');
+    this.localStorage.removeItem('bloodbank_inventory');
+    this.localStorage.removeItem('bloodbank_bloodRequests');
+    
+    // Seed with new data
+    this.localStorage.setItem('bloodbank_hospitals', JSON.stringify(initialHospitals));
+    this.localStorage.setItem('bloodbank_inventory', JSON.stringify(initialInventory));
+    this.localStorage.setItem('bloodbank_bloodRequests', JSON.stringify(initialRequests));
   }
 
   private getStoredData(key: string): any {
@@ -501,10 +489,6 @@ class MockDatabaseService {
   async contactHospital(hospitalId: string, requestId: string): Promise<{ success: boolean; error?: string }> {
     try {
       console.log(`📞 Contacting hospital ${hospitalId} for request ${requestId}`);
-      // In a real application, you would implement the logic to contact the hospital here
-      // This could involve sending a notification, email, or any other form of communication.
-      
-      // For the mock database, we'll simulate a successful contact
       return { success: true };
     } catch (error) {
       console.error(`❌ Error contacting hospital ${hospitalId} for request ${requestId}:`, error);

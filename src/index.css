@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,20 +36,19 @@
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Indian theme colors - Red, Blue, White, Black */
+    --indian-red: 0 84.2% 60.2%;
+    --indian-blue: 217.2 91.2% 59.8%;
+    --indian-white: 0 0% 100%;
+    --indian-black: 222.2 84% 4.9%;
   }
 
   .dark {
@@ -97,5 +97,32 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Indian theme utility classes */
+@layer utilities {
+  .text-indian-red {
+    color: hsl(var(--indian-red));
+  }
+  
+  .text-indian-blue {
+    color: hsl(var(--indian-blue));
+  }
+  
+  .bg-indian-red {
+    background-color: hsl(var(--indian-red));
+  }
+  
+  .bg-indian-blue {
+    background-color: hsl(var(--indian-blue));
+  }
+  
+  .border-indian-red {
+    border-color: hsl(var(--indian-red));
+  }
+  
+  .border-indian-blue {
+    border-color: hsl(var(--indian-blue));
   }
 }

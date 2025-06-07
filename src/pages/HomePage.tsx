@@ -13,19 +13,19 @@ const HomePage = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-12">
         {/* Hero Section */}
-        <div className="text-center mb-16">
-          <div className="flex justify-center mb-4">
-            <Brain className="h-16 w-16 text-purple-600" />
+        <div className="text-center mb-20">
+          <div className="flex justify-center mb-6">
+            <Brain className="h-16 w-16 text-blue-600" />
           </div>
           <h1 className="text-5xl font-bold text-red-600 mb-6">
-            Blood<span className="text-purple-600">Bank</span>AI
+            Blood<span className="text-blue-600">Bank</span>AI
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
-            Connect with local blood banks and hospitals using our AI-powered matching system.
-            Track real-time blood availability and help save lives by donating when it's needed most.
+            Connecting Indian hospitals and blood banks using our AI-powered matching system.
+            Track real-time blood availability across India and help save lives by donating when it's needed most.
           </p>
 
-          <div className="flex justify-center gap-4 mb-12">
+          <div className="flex justify-center gap-4 mb-16">
             {isAuthenticated ? (
               <Button
                 onClick={() => navigate(userType === 'hospital' ? '/dashboard' : '/government-dashboard')}
@@ -54,37 +54,39 @@ const HomePage = () => {
               </>
             )}
           </div>
+        </div>
 
-          {/* Stats Section */}
-          <div className="grid md:grid-cols-3 gap-8 mb-16">
+        {/* Stats Section */}
+        <div className="mb-20">
+          <div className="grid md:grid-cols-3 gap-8">
             <Card className="p-6 text-center">
               <Hospital className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-2xl font-semibold mb-2">Hospitals Connected</h3>
-              <p className="text-gray-600">Growing network of medical facilities</p>
+              <h3 className="text-2xl font-semibold mb-2">Indian Hospitals Connected</h3>
+              <p className="text-gray-600">Growing network of medical facilities across India</p>
             </Card>
 
             <Card className="p-6 text-center">
               <DropletIcon className="w-12 h-12 text-red-500 mx-auto mb-4" />
               <h3 className="text-2xl font-semibold mb-2">Life-Saving Matches</h3>
-              <p className="text-gray-600">AI-powered blood type matching</p>
+              <p className="text-gray-600">AI-powered blood type matching for Indian patients</p>
             </Card>
 
             <Card className="p-6 text-center">
               <Database className="w-12 h-12 text-red-500 mx-auto mb-4" />
               <h3 className="text-2xl font-semibold mb-2">Real-Time Updates</h3>
-              <p className="text-gray-600">Live inventory and request tracking</p>
+              <p className="text-gray-600">Live inventory tracking across Indian blood banks</p>
             </Card>
           </div>
         </div>
 
         {/* Call to Action Section */}
         <div className="text-center mb-24">
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">
-            Join the Blood Bank AI Network
+          <h2 className="text-3xl font-bold text-gray-800 mb-6">
+            Join the BloodBankAI Network in India
           </h2>
-          <p className="text-lg text-gray-600 mb-6 max-w-2xl mx-auto">
-            Be part of the future of blood donation and medical emergency response. 
-            Our platform connects hospitals, blood banks, and donors for faster, more efficient life-saving operations.
+          <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+            Be part of the future of blood donation and medical emergency response in India. 
+            Our platform connects hospitals, blood banks, and donors across the country for faster, more efficient life-saving operations.
           </p>
           {!isAuthenticated && (
             <Button 

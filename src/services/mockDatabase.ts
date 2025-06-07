@@ -70,7 +70,7 @@ const initialHospitals: Hospital[] = [
     id: 'hospital-1',
     name: 'Muskaan Hospital',
     email: 'muskaan@gmail.com',
-    address: 'S R Nagar',
+    address: 'S R Nagar, Hyderabad, Telangana, India',
     phone: '7823292290',
     website: 'www.muskaanhospital.com',
     contactPerson: 'Muskaan',
@@ -82,7 +82,7 @@ const initialHospitals: Hospital[] = [
     id: 'hospital-2',
     name: 'ESI Hospital',
     email: 'esi@gmail.com',
-    address: 'S R Nagar',
+    address: 'S R Nagar, Hyderabad, Telangana, India',
     phone: '7823291190',
     website: 'www.esihospital.com',
     contactPerson: 'Indu',
@@ -492,6 +492,30 @@ class MockDatabaseService {
       return { success: true };
     } catch (error) {
       console.error(`❌ Error contacting hospital ${hospitalId} for request ${requestId}:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async updateHospital(hospitalId: string, updates: Partial<Omit<Hospital, 'id' | 'createdAt'>>): Promise<{ success: boolean; error?: string }> {
+    try {
+      const hospitals = this.getStoredData('hospitals') as Hospital[];
+      const hospitalIndex = hospitals.findIndex(h => h.id === hospitalId);
+      
+      if (hospitalIndex === -1) {
+        return { success: false, error: 'Hospital not found' };
+      }
+      
+      hospitals[hospitalIndex] = {
+        ...hospitals[hospitalIndex],
+        ...updates,
+        updatedAt: new Date()
+      };
+      
+      this.localStorage.setItem('bloodbank_hospitals', JSON.stringify(hospitals));
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+      
+      return { success: true };
+    } catch (error) {
       return { success: false, error: error.message };
     }
   }

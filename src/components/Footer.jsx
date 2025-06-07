@@ -12,9 +12,9 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="col-span-1 md:col-span-1">
             <div className="flex items-center mb-4">
-              <Brain className="h-8 w-8 text-purple-600 mr-2" />
+              <Brain className="h-8 w-8 text-blue-600 mr-2" />
               <h3 className="text-xl font-semibold text-red-600">
-                BloodBank<span className="text-purple-600">AI</span>
+                BloodBank<span className="text-blue-600">AI</span>
               </h3>
             </div>
             <p className="text-gray-600 max-w-md">

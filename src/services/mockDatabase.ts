@@ -65,126 +65,10 @@ export interface AiMatch {
   medicalCompatibilityScore: number;
 }
 
-const initialHospitals: Hospital[] = [
-  {
-    id: 'hospital-1',
-    name: 'Muskaan Hospital',
-    email: 'muskaan@gmail.com',
-    address: 'S R Nagar, Hyderabad, Telangana, India',
-    phone: '7823292290',
-    website: 'www.muskaanhospital.com',
-    contactPerson: 'Muskaan',
-    registrationId: 'MH001',
-    verified: true,
-    createdAt: new Date(),
-  },
-  {
-    id: 'hospital-2',
-    name: 'ESI Hospital',
-    email: 'esi@gmail.com',
-    address: 'S R Nagar, Hyderabad, Telangana, India',
-    phone: '7823291190',
-    website: 'www.esihospital.com',
-    contactPerson: 'Indu',
-    registrationId: 'ESI001',
-    verified: true,
-    createdAt: new Date(),
-  }
-];
-
-const initialInventory: BloodInventory[] = [
-  {
-    id: 'inventory-1',
-    hospitalId: 'hospital-1',
-    hospital: 'Muskaan Hospital',
-    bloodType: 'A',
-    rhFactor: 'positive',
-    units: 25,
-    processedDate: new Date('2024-01-01'),
-    expirationDate: new Date('2024-03-01'),
-    donorAge: 28,
-    specialAttributes: ['irradiated'],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'inventory-2',
-    hospitalId: 'hospital-1',
-    hospital: 'Muskaan Hospital',
-    bloodType: 'O',
-    rhFactor: 'positive',
-    units: 30,
-    processedDate: new Date('2024-01-15'),
-    expirationDate: new Date('2024-03-15'),
-    donorAge: 35,
-    specialAttributes: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'inventory-3',
-    hospitalId: 'hospital-2',
-    hospital: 'ESI Hospital',
-    bloodType: 'B',
-    rhFactor: 'negative',
-    units: 20,
-    processedDate: new Date('2024-02-01'),
-    expirationDate: new Date('2024-04-01'),
-    donorAge: 30,
-    specialAttributes: ['leukoreduced'],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'inventory-4',
-    hospitalId: 'hospital-2',
-    hospital: 'ESI Hospital',
-    bloodType: 'AB',
-    rhFactor: 'positive',
-    units: 15,
-    processedDate: new Date('2024-02-10'),
-    expirationDate: new Date('2024-04-10'),
-    donorAge: 25,
-    specialAttributes: [],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
-
-const initialRequests: BloodRequest[] = [
-  {
-    id: 'request-1',
-    hospitalId: 'hospital-1',
-    hospital: 'Muskaan Hospital',
-    bloodType: 'B Rh- (B-)',
-    units: 8,
-    urgency: 'urgent',
-    patientAge: 45,
-    patientWeight: 70,
-    medicalCondition: 'Surgery preparation',
-    neededBy: new Date('2024-03-15'),
-    specialRequirements: [],
-    matchPercentage: 85,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: 'request-2',
-    hospitalId: 'hospital-2',
-    hospital: 'ESI Hospital',
-    bloodType: 'A Rh+ (A+)',
-    units: 12,
-    urgency: 'critical',
-    patientAge: 60,
-    patientWeight: 65,
-    medicalCondition: 'Emergency trauma',
-    neededBy: new Date('2024-03-10'),
-    specialRequirements: ['irradiated'],
-    matchPercentage: 90,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+// Empty initial data arrays
+const initialHospitals: Hospital[] = [];
+const initialInventory: BloodInventory[] = [];
+const initialRequests: BloodRequest[] = [];
 
 class MockDatabaseService {
   private localStorage: Storage;
@@ -200,7 +84,7 @@ class MockDatabaseService {
     this.localStorage.removeItem('bloodbank_inventory');
     this.localStorage.removeItem('bloodbank_bloodRequests');
     
-    // Seed with new data
+    // Seed with empty data
     this.localStorage.setItem('bloodbank_hospitals', JSON.stringify(initialHospitals));
     this.localStorage.setItem('bloodbank_inventory', JSON.stringify(initialInventory));
     this.localStorage.setItem('bloodbank_bloodRequests', JSON.stringify(initialRequests));
@@ -444,7 +328,6 @@ class MockDatabaseService {
         return { success: false, error: 'Blood request not found' };
       }
       
-      // Update the request
       requests[requestIndex] = {
         ...requests[requestIndex],
         ...updates,
@@ -515,6 +398,25 @@ class MockDatabaseService {
       window.dispatchEvent(new CustomEvent('dataRefresh'));
       
       return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  async addHospital(hospitalData: Omit<Hospital, 'id' | 'createdAt'>): Promise<{ success: boolean; error?: string; hospital?: Hospital }> {
+    try {
+      const newHospital: Hospital = {
+        id: uuidv4(),
+        ...hospitalData,
+        createdAt: new Date(),
+      };
+
+      const hospitals = this.getStoredData('hospitals') as Hospital[] || [];
+      hospitals.push(newHospital);
+      this.localStorage.setItem('bloodbank_hospitals', JSON.stringify(hospitals));
+      window.dispatchEvent(new CustomEvent('dataRefresh'));
+
+      return { success: true, hospital: newHospital };
     } catch (error) {
       return { success: false, error: error.message };
     }

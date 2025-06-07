@@ -6,53 +6,49 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Edit, Plus, Calendar } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Trash2, Edit, Plus, Droplets, Calendar, User, AlertTriangle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import mockDatabaseService, { BloodInventory } from '@/services/mockDatabase';
 import { format } from 'date-fns';
-import { useAuth } from '@/context/AuthContext';
 
-const InventoryManager: React.FC = () => {
-  const { currentUser } = useAuth();
+interface InventoryManagerProps {
+  hospitalName: string;
+}
+
+const InventoryManager: React.FC<InventoryManagerProps> = ({ hospitalName }) => {
   const [inventory, setInventory] = useState<BloodInventory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingItem, setEditingItem] = useState<BloodInventory | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [bloodTypeFilter, setBloodTypeFilter] = useState('all');
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
     bloodType: '',
     rhFactor: 'positive' as 'positive' | 'negative',
     units: 0,
+    processedDate: '',
     expirationDate: '',
     donorAge: 0,
     specialAttributes: [] as string[]
   });
 
+  const specialAttributeOptions = [
+    'irradiated', 'leukoreduced', 'cmv-negative', 'frozen', 'washed', 
+    'pathogen-reduced', 'apheresis', 'autologous', 'directed-donor'
+  ];
+
   const fetchInventory = async () => {
     try {
-      if (!currentUser?.id || !currentUser?.hospitalName) {
-        console.log('🚫 No current user or hospital name available - clearing inventory');
-        setInventory([]);
-        setIsLoading(false);
-        return;
-      }
-
       setIsLoading(true);
-      console.log('🔍 Fetching inventory for hospital ID:', currentUser.id, 'name:', currentUser.hospitalName);
-      
-      // CRITICAL: Use hospital ID for strict data isolation
-      const data = await mockDatabaseService.getHospitalBloodInventoryById(currentUser.id);
-      
-      // Double verification - ensure all inventory belongs to this hospital
-      const verifiedData = data.filter(item => item.hospitalId === currentUser.id);
-      
-      setInventory(verifiedData);
-      console.log('✅ Inventory fetched and verified:', verifiedData.length, 'items for hospital', currentUser.hospitalName);
+      const data = await mockDatabaseService.getBloodInventoryDetails();
+      const hospitalInventory = data.filter(item => item.hospital === hospitalName);
+      setInventory(hospitalInventory);
     } catch (error) {
-      console.error('❌ Error fetching inventory:', error);
-      setInventory([]);
+      console.error('Error fetching inventory:', error);
       toast({
         title: "Error",
         description: "Failed to fetch inventory data.",
@@ -63,37 +59,16 @@ const InventoryManager: React.FC = () => {
     }
   };
 
-  // CRITICAL: Clear inventory immediately when user changes and fetch new data
   useEffect(() => {
-    console.log('👤 User changed in InventoryManager - clearing and fetching for:', currentUser?.hospitalName, 'ID:', currentUser?.id);
-    
-    // Immediately clear inventory to prevent showing old data
-    setInventory([]);
-    
-    if (currentUser?.id) {
-      fetchInventory();
-    } else {
-      setIsLoading(false);
-    }
-  }, [currentUser?.id]);
-
-  useEffect(() => {
-    const handleDataRefresh = () => {
-      console.log('📡 Data refresh event received - refreshing inventory for:', currentUser?.hospitalName);
-      if (currentUser?.id) {
-        fetchInventory();
-      }
-    };
-
-    window.addEventListener('dataRefresh', handleDataRefresh);
-    return () => window.removeEventListener('dataRefresh', handleDataRefresh);
-  }, [currentUser?.id]);
+    fetchInventory();
+  }, [hospitalName]);
 
   const resetForm = () => {
     setFormData({
       bloodType: '',
       rhFactor: 'positive',
       units: 0,
+      processedDate: '',
       expirationDate: '',
       donorAge: 0,
       specialAttributes: []
@@ -102,16 +77,7 @@ const InventoryManager: React.FC = () => {
 
   const handleAdd = async () => {
     try {
-      if (!currentUser?.hospitalName) {
-        toast({
-          title: "Error",
-          description: "No hospital information available.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (!formData.bloodType || !formData.expirationDate || formData.units <= 0) {
+      if (!formData.bloodType || !formData.processedDate || !formData.expirationDate || formData.units <= 0) {
         toast({
           title: "Validation Error",
           description: "Please fill in all required fields with valid values.",
@@ -120,14 +86,12 @@ const InventoryManager: React.FC = () => {
         return;
       }
 
-      console.log('➕ Adding inventory for hospital:', currentUser.hospitalName, 'ID:', currentUser.id);
-
-      await mockDatabaseService.addBloodInventory(currentUser.hospitalName, {
+      await mockDatabaseService.addBloodInventory(hospitalName, {
         bloodType: formData.bloodType,
         rhFactor: formData.rhFactor,
         units: formData.units,
+        processedDate: new Date(formData.processedDate),
         expirationDate: new Date(formData.expirationDate),
-        processedDate: new Date(),
         donorAge: formData.donorAge,
         specialAttributes: formData.specialAttributes
       });
@@ -141,7 +105,7 @@ const InventoryManager: React.FC = () => {
       resetForm();
       fetchInventory();
     } catch (error) {
-      console.error('❌ Error adding inventory:', error);
+      console.error('Error adding inventory:', error);
       toast({
         title: "Error",
         description: "Failed to add blood inventory.",
@@ -158,6 +122,7 @@ const InventoryManager: React.FC = () => {
         bloodType: formData.bloodType,
         rhFactor: formData.rhFactor,
         units: formData.units,
+        processedDate: new Date(formData.processedDate),
         expirationDate: new Date(formData.expirationDate),
         donorAge: formData.donorAge,
         specialAttributes: formData.specialAttributes
@@ -189,11 +154,11 @@ const InventoryManager: React.FC = () => {
     }
   };
 
-  const handleDelete = async (itemId: string) => {
+  const handleDelete = async (inventoryId: string) => {
+    if (!confirm('Are you sure you want to delete this inventory item?')) return;
+
     try {
-      console.log('🗑️ Deleting inventory item:', itemId);
-      
-      const result = await mockDatabaseService.deleteBloodInventory(itemId);
+      const result = await mockDatabaseService.deleteBloodInventory(inventoryId);
       
       if (result.success) {
         toast({
@@ -222,8 +187,9 @@ const InventoryManager: React.FC = () => {
     setEditingItem(item);
     setFormData({
       bloodType: item.bloodType,
-      rhFactor: item.rhFactor as 'positive' | 'negative',
+      rhFactor: item.rhFactor,
       units: item.units,
+      processedDate: format(new Date(item.processedDate), 'yyyy-MM-dd'),
       expirationDate: format(new Date(item.expirationDate), 'yyyy-MM-dd'),
       donorAge: item.donorAge,
       specialAttributes: item.specialAttributes || []
@@ -231,46 +197,55 @@ const InventoryManager: React.FC = () => {
     setIsEditDialogOpen(true);
   };
 
-  const formatBloodType = (bloodType: string, rhFactor: string) => {
-    return `${bloodType} ${rhFactor === 'positive' ? '+' : '-'}`;
+  const handleSpecialAttributeChange = (attribute: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      specialAttributes: checked
+        ? [...prev.specialAttributes, attribute]
+        : prev.specialAttributes.filter(attr => attr !== attribute)
+    }));
   };
 
-  const getExpiryStatus = (expirationDate: Date) => {
-    const daysLeft = Math.ceil((new Date(expirationDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (daysLeft <= 0) return { color: 'bg-red-500', text: 'Expired' };
-    if (daysLeft <= 7) return { color: 'bg-red-500', text: `${daysLeft}d left` };
-    if (daysLeft <= 14) return { color: 'bg-amber-500', text: `${daysLeft}d left` };
-    return { color: 'bg-green-500', text: `${daysLeft}d left` };
+  const isExpiringSoon = (expirationDate: Date) => {
+    const now = new Date();
+    const expiry = new Date(expirationDate);
+    const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return daysUntilExpiry <= 7;
   };
 
-  if (!currentUser?.hospitalName) {
-    return (
-      <Card>
-        <CardContent className="text-center py-6">
-          <p>Please log in as a hospital to manage inventory.</p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const isExpired = (expirationDate: Date) => {
+    return new Date(expirationDate) < new Date();
+  };
+
+  // Filter inventory based on search and blood type
+  const filteredInventory = inventory.filter(item => {
+    const matchesSearch = item.bloodType.toLowerCase().includes(searchFilter.toLowerCase()) ||
+                         item.specialAttributes?.some(attr => attr.toLowerCase().includes(searchFilter.toLowerCase()));
+    const matchesBloodType = bloodTypeFilter === 'all' || 
+                           `${item.bloodType}${item.rhFactor === 'positive' ? '+' : '-'}` === bloodTypeFilter;
+    return matchesSearch && matchesBloodType;
+  });
 
   return (
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-          <CardTitle>Blood Inventory Management - {currentUser.hospitalName}</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Droplets className="h-5 w-5 text-indian-blue" />
+            Blood Inventory Management
+          </CardTitle>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={resetForm}>
+              <Button onClick={resetForm} className="bg-indian-blue hover:bg-blue-700">
                 <Plus className="h-4 w-4 mr-2" />
                 Add Blood Unit
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>Add Blood Inventory</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-96 overflow-y-auto">
                 <div>
                   <Label htmlFor="bloodType">Blood Type</Label>
                   <Select value={formData.bloodType} onValueChange={(value) => setFormData({...formData, bloodType: value})}>
@@ -287,7 +262,7 @@ const InventoryManager: React.FC = () => {
                 </div>
                 <div>
                   <Label htmlFor="rhFactor">Rh Factor</Label>
-                  <Select value={formData.rhFactor} onValueChange={(value) => setFormData({...formData, rhFactor: value as 'positive' | 'negative'})}>
+                  <Select value={formData.rhFactor} onValueChange={(value: any) => setFormData({...formData, rhFactor: value})}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -307,6 +282,14 @@ const InventoryManager: React.FC = () => {
                   />
                 </div>
                 <div>
+                  <Label htmlFor="processedDate">Processed Date</Label>
+                  <Input
+                    type="date"
+                    value={formData.processedDate}
+                    onChange={(e) => setFormData({...formData, processedDate: e.target.value})}
+                  />
+                </div>
+                <div>
                   <Label htmlFor="expirationDate">Expiration Date</Label>
                   <Input
                     type="date"
@@ -321,14 +304,33 @@ const InventoryManager: React.FC = () => {
                     value={formData.donorAge}
                     onChange={(e) => setFormData({...formData, donorAge: parseInt(e.target.value) || 0})}
                     min="18"
-                    max="65"
+                    max="70"
                   />
+                </div>
+                <div>
+                  <Label>Special Attributes</Label>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    {specialAttributeOptions.map((attribute) => (
+                      <div key={attribute} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={attribute}
+                          checked={formData.specialAttributes.includes(attribute)}
+                          onCheckedChange={(checked) => handleSpecialAttributeChange(attribute, checked as boolean)}
+                        />
+                        <Label htmlFor={attribute} className="text-sm capitalize">
+                          {attribute.replace('-', ' ')}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex justify-end space-x-2">
                   <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleAdd}>Add Inventory</Button>
+                  <Button onClick={handleAdd} className="bg-indian-blue hover:bg-blue-700">
+                    Add Inventory
+                  </Button>
                 </div>
               </div>
             </DialogContent>
@@ -336,27 +338,55 @@ const InventoryManager: React.FC = () => {
         </div>
       </CardHeader>
       <CardContent>
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex-1">
+            <Input
+              placeholder="Search by blood type or attributes..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+            />
+          </div>
+          <div className="w-full sm:w-48">
+            <Select value={bloodTypeFilter} onValueChange={setBloodTypeFilter}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Blood Types</SelectItem>
+                <SelectItem value="A+">A+</SelectItem>
+                <SelectItem value="A-">A-</SelectItem>
+                <SelectItem value="B+">B+</SelectItem>
+                <SelectItem value="B-">B-</SelectItem>
+                <SelectItem value="AB+">AB+</SelectItem>
+                <SelectItem value="AB-">AB-</SelectItem>
+                <SelectItem value="O+">O+</SelectItem>
+                <SelectItem value="O-">O-</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         {isLoading ? (
           <div className="text-center py-4">Loading inventory...</div>
-        ) : inventory.length > 0 ? (
-          <div className="space-y-3">
-            {inventory.map((item) => {
-              const expiryStatus = getExpiryStatus(item.expirationDate);
-              return (
-                <div key={item.id} className="flex justify-between items-center p-3 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="font-semibold text-lg">
-                      {formatBloodType(item.bloodType, item.rhFactor)}
+        ) : filteredInventory.length > 0 ? (
+          <div className="space-y-4">
+            {filteredInventory.map((item) => (
+              <div key={item.id} className="border rounded-lg p-4 bg-white">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="font-semibold text-lg text-indian-blue">
+                      {item.bloodType} {item.rhFactor === 'positive' ? '+' : '-'}
                     </div>
-                    <div className="text-gray-600">
+                    <Badge variant="outline" className="bg-indian-blue text-white">
                       {item.units} units
-                    </div>
-                    <Badge className={expiryStatus.color}>
-                      {expiryStatus.text}
                     </Badge>
-                    <div className="text-sm text-gray-500">
-                      Donor: {item.donorAge}y
-                    </div>
+                    {isExpired(item.expirationDate) && (
+                      <Badge variant="destructive">Expired</Badge>
+                    )}
+                    {!isExpired(item.expirationDate) && isExpiringSoon(item.expirationDate) && (
+                      <Badge className="bg-amber-500">Expiring Soon</Badge>
+                    )}
                   </div>
                   <div className="flex space-x-2">
                     <Button
@@ -375,24 +405,59 @@ const InventoryManager: React.FC = () => {
                     </Button>
                   </div>
                 </div>
-              );
-            })}
+                
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-gray-600">
+                      <Calendar className="h-4 w-4 inline mr-1" />
+                      <span className="font-medium">Processed:</span> {format(new Date(item.processedDate), 'MMM d, yyyy')}
+                    </p>
+                    <p className="text-gray-600">
+                      <AlertTriangle className="h-4 w-4 inline mr-1" />
+                      <span className="font-medium">Expires:</span> {format(new Date(item.expirationDate), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-gray-600">
+                      <User className="h-4 w-4 inline mr-1" />
+                      <span className="font-medium">Donor Age:</span> {item.donorAge} years
+                    </p>
+                    {item.specialAttributes && item.specialAttributes.length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-sm font-medium text-gray-700 mb-1">Special Attributes:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {item.specialAttributes.map((attr) => (
+                            <Badge key={attr} variant="outline" className="text-xs">
+                              {attr.replace('-', ' ')}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="text-center py-6 text-gray-600">
-            <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-lg font-medium mb-2">No blood inventory</p>
-            <p className="text-sm text-gray-500">Add blood units to start managing your inventory.</p>
+            <Droplets className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+            <p className="text-lg font-medium mb-2">No blood inventory found</p>
+            <p className="text-sm text-gray-500">
+              {searchFilter || bloodTypeFilter !== 'all' 
+                ? 'Try adjusting your filters or search terms.'
+                : 'Add blood units to get started.'}
+            </p>
           </div>
         )}
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Edit Blood Inventory</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-96 overflow-y-auto">
               <div>
                 <Label htmlFor="bloodType">Blood Type</Label>
                 <Select value={formData.bloodType} onValueChange={(value) => setFormData({...formData, bloodType: value})}>
@@ -409,7 +474,7 @@ const InventoryManager: React.FC = () => {
               </div>
               <div>
                 <Label htmlFor="rhFactor">Rh Factor</Label>
-                <Select value={formData.rhFactor} onValueChange={(value) => setFormData({...formData, rhFactor: value as 'positive' | 'negative'})}>
+                <Select value={formData.rhFactor} onValueChange={(value: any) => setFormData({...formData, rhFactor: value})}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -429,6 +494,14 @@ const InventoryManager: React.FC = () => {
                 />
               </div>
               <div>
+                <Label htmlFor="processedDate">Processed Date</Label>
+                <Input
+                  type="date"
+                  value={formData.processedDate}
+                  onChange={(e) => setFormData({...formData, processedDate: e.target.value})}
+                />
+              </div>
+              <div>
                 <Label htmlFor="expirationDate">Expiration Date</Label>
                 <Input
                   type="date"
@@ -443,14 +516,33 @@ const InventoryManager: React.FC = () => {
                   value={formData.donorAge}
                   onChange={(e) => setFormData({...formData, donorAge: parseInt(e.target.value) || 0})}
                   min="18"
-                  max="65"
+                  max="70"
                 />
+              </div>
+              <div>
+                <Label>Special Attributes</Label>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {specialAttributeOptions.map((attribute) => (
+                    <div key={attribute} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`edit-${attribute}`}
+                        checked={formData.specialAttributes.includes(attribute)}
+                        onCheckedChange={(checked) => handleSpecialAttributeChange(attribute, checked as boolean)}
+                      />
+                      <Label htmlFor={`edit-${attribute}`} className="text-sm capitalize">
+                        {attribute.replace('-', ' ')}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="flex justify-end space-x-2">
                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleEdit}>Update Inventory</Button>
+                <Button onClick={handleEdit} className="bg-indian-blue hover:bg-blue-700">
+                  Update Inventory
+                </Button>
               </div>
             </div>
           </DialogContent>
